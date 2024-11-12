@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AuthChoice } from './_components/auth/auth-choice'
 import { ArrowRight } from 'lucide-react'
 
 export default function Home() {
@@ -15,17 +16,11 @@ export default function Home() {
             Streamline your intellectual property registration process with our modern platform. 
             Built for African markets, compliant with ARIPO requirements.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link
-              href="/register"
-              className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-dark transition-colors"
-            >
-              Get Started
-              <ArrowRight className="ml-2 h-4 w-4 inline-block" />
-            </Link>
+          <div className="mt-10 flex flex-col items-center justify-center gap-y-6">
+            <AuthChoice />
             <Link
               href="/pricing"
-              className="text-sm font-semibold leading-6 text-foreground"
+              className="text-sm font-semibold leading-6 text-foreground hover:text-primary transition-colors"
             >
               View Pricing <span aria-hidden="true">→</span>
             </Link>
