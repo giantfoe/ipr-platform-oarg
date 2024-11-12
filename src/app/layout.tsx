@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { ClientProviders } from "./_components/providers/ClientProviders";
+import { Navbar } from "./_components/layout/navbar";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -23,30 +25,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="en" className={cn(
-      "h-full",
-      geistSans.variable,
-      geistMono.variable,
-    )}>
-      <body className="min-h-screen bg-background antialiased font-sans">
-        <div className="relative flex min-h-screen flex-col">
-          <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            {/* Add your header/navigation component here */}
-          </header>
-
-          <main className="flex-1">
+    <html lang="en">
+      <body>
+        <ClientProviders>
+          <Navbar />
+          <main className="pt-16">
             {children}
           </main>
-
-          <footer className="border-t bg-background">
-            {/* Add your footer component here */}
-          </footer>
-        </div>
+        </ClientProviders>
       </body>
     </html>
-  );
+  )
 }

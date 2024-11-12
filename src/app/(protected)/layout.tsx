@@ -1,23 +1,26 @@
-import { createServerSupabaseClient } from '@/utils/supabase/server'
-import { redirect } from 'next/navigation'
+'use client'
 
-export default async function ProtectedLayout({
+import { useWallet } from "@solana/wallet-adapter-react"
+import { redirect } from "next/navigation"
+import { useEffect } from "react"
+
+export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createServerSupabaseClient()
-  const { data: { session } } = await supabase.auth.getSession()
+  const { connected } = useWallet()
 
-  if (!session) {
-    redirect('/login')
-  }
+  useEffect(() => {
+    if (!connected) {
+      redirect('/')
+    }
+  }, [connected])
+
+  if (!connected) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        {/* Add your navigation component here */}
-      </nav>
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>

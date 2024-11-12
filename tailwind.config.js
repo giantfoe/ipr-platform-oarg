@@ -1,32 +1,41 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    './src/**/*.{js,ts,jsx,tsx}',
+    './node_modules/@solana/wallet-adapter-react-ui/styles.css',
+    './node_modules/react-icons/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        primary: {
-          DEFAULT: "var(--primary)",
-          dark: "var(--primary-dark)",
+        primary: '#635BFF',
+        secondary: '#0A2540',
+        accent: '#00D4FF',
+        background: {
+          light: '#ffffff',
+          dark: '#0A2540',
+          gray: '#F6F9FC',
         },
-        secondary: {
-          DEFAULT: "var(--secondary)",
-          light: "var(--secondary-light)",
+        text: {
+          primary: '#0A2540',
+          secondary: '#425466',
+          light: '#ffffff',
         },
-        muted: {
-          DEFAULT: "var(--muted)",
-          foreground: "var(--muted-foreground)",
+        border: {
+          light: '#E6E6E6',
+          dark: '#425466',
         },
-        border: "var(--border)",
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "monospace"],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+      },
+      spacing: {
+        xs: '0.25rem',
+        sm: '0.5rem',
+        md: '1rem',
+        lg: '1.5rem',
+        xl: '2rem',
+        xxl: '3rem',
       },
     },
   },

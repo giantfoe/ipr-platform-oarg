@@ -3,36 +3,13 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* Light mode colors */
-    --background: #ffffff;
-    --foreground: #0a2540;
-    --primary: #635bff;
-    --primary-dark: #4c45e4;
-    --secondary: #0a2540;
-    --secondary-light: #425466;
-    --muted: #f6f9fc;
-    --muted-foreground: #697386;
-    --border: #e6ebf1;
+  body {
+    @apply bg-gray-50 text-[#0A2540] font-sans antialiased;
   }
-
-  .dark {
-    /* Dark mode colors */
-    --background: #0a2540;
-    --foreground: #f6f9fc;
-    --muted: #1a1f36;
-    --muted-foreground: #a5b4fc;
-    --border: #2d3748;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#635BFF] to-[#00D4FF];
   }
 }
