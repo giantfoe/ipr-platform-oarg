@@ -1,54 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useState } from 'react'
+import { useWallet } from '@solana/wallet-adapter-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
-
-const APPLICATION_TYPES = [
-  { id: 'patent', name: 'Patent' },
-  { id: 'trademark', name: 'Trademark' },
-  { id: 'copyright', name: 'Copyright' },
-]
-
-const ARIPO_MEMBER_STATES = [
-  'Botswana', 'Eswatini', 'Gambia', 'Ghana', 'Kenya', 'Lesotho', 'Liberia', 
-  'Malawi', 'Mozambique', 'Namibia', 'Rwanda', 'São Tomé and Príncipe', 
-  'Sierra Leone', 'Somalia', 'Sudan', 'Tanzania', 'Uganda', 'Zambia', 'Zimbabwe'
-]
 
 export function IPRegistrationForm() {
   const { publicKey } = useWallet()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [needsProfile, setNeedsProfile] = useState(false)
-  const supabase = createClient()
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([])
 
-  useEffect(() => {
-    async function checkProfile() {
-      if (publicKey) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('wallet_address', publicKey.toBase58())
-          .single()
-
-        setNeedsProfile(!profile)
-      }
-    }
-    checkProfile()
-  }, [publicKey, supabase])
-
-  if (needsProfile) {
-    return (
-      <div className="max-w-xl mx-auto p-6">
-        <h2 className="text-xl font-semibold mb-4">Complete Your Profile</h2>
-        <p className="mb-4 text-gray-600">Please complete your profile before submitting an IP application.</p>
-        {/* Profile form here */}
-      </div>
-    )
-  }
+  const regions = [
+    'United States',
+    'European Union',
+    'United Kingdom',
+    'China',
+    'Japan',
+    'Other'
+  ]
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -61,26 +32,29 @@ export function IPRegistrationForm() {
       return
     }
 
-    const walletAddress = publicKey.toBase58()
     const formData = new FormData(e.currentTarget)
-    
+    const title = formData.get('title') as string
+    const description = formData.get('description') as string
+    const applicationType = formData.get('application_type') as string
+
     try {
-      const applicationData = {
-        title: formData.get('title'),
-        description: formData.get('description'),
-        application_type: formData.get('application_type'),
-        region: selectedRegions,
-        wallet_address: walletAddress,
-        status: 'draft',
-        fee_status: 'unpaid',
-        documents: {}
+      const response = await fetch('/api/ip-applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': publicKey.toBase58(),
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          application_type: applicationType,
+          region: selectedRegions,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create application')
       }
-
-      const { error: insertError } = await supabase
-        .from('ip_applications')
-        .insert([applicationData])
-
-      if (insertError) throw insertError
 
       router.push('/applications')
     } catch (err) {
@@ -95,25 +69,12 @@ export function IPRegistrationForm() {
     <form onSubmit={handleSubmit} className="space-y-6 bg-white shadow-md rounded-lg p-6">
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Title/Name of IP
+          Title
         </label>
         <input
           type="text"
           name="title"
           id="title"
-          required
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-          Description
-        </label>
-        <textarea
-          name="description"
-          id="description"
-          rows={4}
           required
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
@@ -129,39 +90,50 @@ export function IPRegistrationForm() {
           required
           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         >
-          <option value="">Select type</option>
-          {APPLICATION_TYPES.map(type => (
-            <option key={type.id} value={type.id}>
-              {type.name}
-            </option>
-          ))}
+          <option value="">Select type...</option>
+          <option value="patent">Patent</option>
+          <option value="trademark">Trademark</option>
+          <option value="copyright">Copyright</option>
         </select>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Region Selection
+        <label className="block text-sm font-medium text-gray-700">
+          Regions
         </label>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {ARIPO_MEMBER_STATES.map(state => (
-            <label key={state} className="flex items-center space-x-2">
+        <div className="mt-2 space-y-2">
+          {regions.map((region) => (
+            <label key={region} className="inline-flex items-center mr-4">
               <input
                 type="checkbox"
-                value={state}
-                checked={selectedRegions.includes(state)}
+                value={region}
+                checked={selectedRegions.includes(region)}
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setSelectedRegions([...selectedRegions, state])
+                    setSelectedRegions([...selectedRegions, region])
                   } else {
-                    setSelectedRegions(selectedRegions.filter(r => r !== state))
+                    setSelectedRegions(selectedRegions.filter(r => r !== region))
                   }
                 }}
                 className="rounded border-gray-300 text-primary focus:ring-primary"
               />
-              <span className="text-sm text-gray-700">{state}</span>
+              <span className="ml-2 text-sm text-gray-700">{region}</span>
             </label>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+          Description
+        </label>
+        <textarea
+          name="description"
+          id="description"
+          rows={4}
+          required
+          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        />
       </div>
 
       {error && (
@@ -172,10 +144,10 @@ export function IPRegistrationForm() {
 
       <button
         type="submit"
-        disabled={loading || !publicKey || selectedRegions.length === 0}
+        disabled={loading || !publicKey}
         className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
       >
-        {loading ? 'Creating Application...' : 'Submit Application'}
+        {loading ? 'Creating Application...' : 'Create Application'}
       </button>
     </form>
   )

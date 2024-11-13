@@ -32,7 +32,7 @@ export default function ProtectedLayout({
 
   useEffect(() => {
     if (!connected) {
-      router.replace('/login')
+      router.replace('/')
     }
   }, [connected, router])
 
