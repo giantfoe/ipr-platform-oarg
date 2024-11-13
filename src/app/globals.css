@@ -5,58 +5,68 @@
 @layer base {
   :root {
     --background: #ffffff;
-    --foreground: #0a2540;
+    --foreground: #1a1a1a;
     --card: #ffffff;
-    --card-foreground: #0a2540;
+    --card-foreground: #1a1a1a;
     --primary: #635bff;
     --primary-foreground: #ffffff;
-    --secondary: #0a2540;
-    --secondary-foreground: #ffffff;
-    --muted: #f6f9fc;
-    --muted-foreground: #697386;
-    --accent: #f6f9fc;
-    --accent-foreground: #0a2540;
+    --secondary: #f4f4f5;
+    --secondary-foreground: #18181b;
+    --muted: #f4f4f5;
+    --muted-foreground: #71717a;
+    --accent: #f8fafc;
+    --accent-foreground: #1e293b;
   }
 
   .dark {
-    --background: #0a2540;
-    --foreground: #f6f9fc;
-    --card: #0a2540;
-    --card-foreground: #f6f9fc;
-    --primary: #635bff;
-    --primary-foreground: #ffffff;
-    --secondary: #f6f9fc;
-    --secondary-foreground: #0a2540;
-    --muted: #1a1f36;
-    --muted-foreground: #a5b4fc;
-    --accent: #1a1f36;
-    --accent-foreground: #f6f9fc;
-  }
-}
-
-@layer utilities {
-  .bg-background {
-    background-color: var(--background);
-  }
-  .text-foreground {
-    color: var(--foreground);
-  }
-}
-
-@layer base {
-  body {
-    @apply bg-background text-foreground;
+    --background: #18181b;
+    --foreground: #fafafa;
+    --card: #27272a;
+    --card-foreground: #fafafa;
+    --primary: #818cf8;
+    --primary-foreground: #18181b;
+    --secondary: #27272a;
+    --secondary-foreground: #fafafa;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+    --accent: #27272a;
+    --accent-foreground: #fafafa;
   }
 }
 
 @layer components {
-  .btn {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background;
+  .app-container {
+    @apply min-h-screen bg-custom-background text-custom-foreground;
   }
-  .btn-primary {
-    @apply bg-primary text-white hover:bg-primary/90;
+}
+
+@layer utilities {
+  /* Define custom utility classes */
+  .custom-bg {
+    background-color: var(--background);
   }
-  .btn-secondary {
-    @apply bg-secondary text-white hover:bg-secondary/80;
+  
+  .custom-text {
+    color: var(--foreground);
+  }
+}
+
+/* Base styles */
+body {
+  @apply custom-bg custom-text antialiased;
+}
+
+/* Dark mode improvements */
+.dark img {
+  filter: brightness(.8) contrast(1.2);
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

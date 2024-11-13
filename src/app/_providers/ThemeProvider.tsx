@@ -18,7 +18,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({
   children,
-  defaultTheme = 'system',
+  defaultTheme = 'light',
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(defaultTheme)
 
@@ -34,6 +34,8 @@ export function ThemeProvider({
     } else {
       root.classList.add(theme)
     }
+
+    localStorage.setItem('theme', theme)
   }, [theme])
 
   return (
