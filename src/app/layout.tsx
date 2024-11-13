@@ -1,15 +1,10 @@
 import type { Metadata } from "next";
 import { WalletProvider } from '@/app/_providers/WalletProvider'
 import { AuthProvider } from '@/app/_providers/AuthProvider'
+import { ThemeProvider } from '@/app/_providers/ThemeProvider'
 import { Toaster } from '@/components/ui/toaster'
+import { NavbarWrapper } from './_components/layout/NavbarWrapper'
 import "./globals.css"
-import dynamic from 'next/dynamic'
-
-// Dynamically import the Navbar component
-const Navbar = dynamic(
-  () => import('./_components/layout/navbar'),
-  { ssr: false }
-)
 
 export const metadata: Metadata = {
   title: "IP Register - Modern IP Registration Platform",
@@ -22,17 +17,19 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <WalletProvider>
-          <AuthProvider>
-            <Navbar />
-            <main className="pt-16">
-              {children}
-            </main>
-            <Toaster />
-          </AuthProvider>
-        </WalletProvider>
+        <ThemeProvider defaultTheme="system">
+          <WalletProvider>
+            <AuthProvider>
+              <NavbarWrapper />
+              <main className="pt-16">
+                {children}
+              </main>
+              <Toaster />
+            </AuthProvider>
+          </WalletProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
