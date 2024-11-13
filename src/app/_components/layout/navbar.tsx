@@ -1,7 +1,7 @@
 "use client"
 
 import Link from 'next/link'
-import { WalletButton } from "../wallet/WalletButton"
+import { WalletButton } from "@/app/_components/WalletButton"
 
 export function Navbar() {
   return (

@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ClientProviders } from "./_components/providers/ClientProviders";
 import { Navbar } from "./_components/layout/navbar";
+import { Footer } from "./_components/layout/Footer";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -29,15 +30,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className={cn(
+      "h-full scroll-smooth antialiased",
+      geistSans.variable,
+      geistMono.variable
+    )}>
+      <body className="flex min-h-screen flex-col bg-background font-sans text-foreground">
         <ClientProviders>
           <Navbar />
-          <main className="pt-16">
+          <main className="flex-1">
             {children}
           </main>
+          <Footer />
         </ClientProviders>
       </body>
     </html>
-  )
+  );
 }

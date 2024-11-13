@@ -7,6 +7,7 @@ interface ProfileCardProps {
     full_name: string
     company_name: string
     phone_number: string
+    wallet_address: string
     updated_at: string
   } | null
 }
