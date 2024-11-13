@@ -1,15 +1,22 @@
+-- First, drop existing tables in the correct order (due to dependencies)
+drop table if exists public.payments cascade;
+drop table if exists public.documents cascade;
+drop table if exists public.status_history cascade;
+drop table if exists public.ip_applications cascade;
+drop table if exists public.profiles cascade;
+
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
 -- Create profiles table
 create table public.profiles (
-  id uuid primary key,
-  wallet_address text unique,
+  id uuid primary key default uuid_generate_v4(),
+  wallet_address text unique not null,
   full_name text,
   company_name text,
   phone_number text,
   email text,
-  country text,
+  is_admin boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -77,40 +84,18 @@ alter table public.status_history enable row level security;
 alter table public.documents enable row level security;
 alter table public.payments enable row level security;
 
--- Create RLS Policies for profiles
-create policy "Profiles are viewable by owner"
+-- Create RLS Policies
+create policy "Profiles are viewable by everyone"
   on profiles for select
-  using (wallet_address = auth.jwt() ->> 'wallet_address');
+  using ( true );
 
-create policy "Profiles can be created by owner"
+create policy "Users can create their own profile"
   on profiles for insert
-  with check (wallet_address = auth.jwt() ->> 'wallet_address');
+  with check ( true );
 
-create policy "Profiles can be updated by owner"
+create policy "Users can update own profile"
   on profiles for update
-  using (wallet_address = auth.jwt() ->> 'wallet_address');
-
--- Create RLS Policies for ip_applications
-create policy "Applications are viewable by owner"
-  on ip_applications for select
-  using (wallet_address = auth.jwt() ->> 'wallet_address');
-
-create policy "Applications can be created by owner"
-  on ip_applications for insert
-  with check (wallet_address = auth.jwt() ->> 'wallet_address');
-
-create policy "Applications can be updated by owner"
-  on ip_applications for update
-  using (wallet_address = auth.jwt() ->> 'wallet_address');
-
--- Create RLS Policies for documents
-create policy "Documents are viewable by application owner"
-  on documents for select
-  using (uploaded_by = auth.jwt() ->> 'wallet_address');
-
-create policy "Documents can be created by application owner"
-  on documents for insert
-  with check (uploaded_by = auth.jwt() ->> 'wallet_address');
+  using ( wallet_address = current_setting('request.jwt.claims')::json->>'wallet_address' );
 
 -- Create indexes for better query performance
 create index idx_profiles_wallet on profiles(wallet_address);
