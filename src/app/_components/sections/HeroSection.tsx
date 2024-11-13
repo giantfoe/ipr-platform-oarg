@@ -3,25 +3,16 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import dynamic from "next/dynamic";
-
-// Dynamically import WalletButton with no SSR
-const WalletButton = dynamic(
-  () => import("../WalletButton").then(mod => mod.WalletButton),
-  { ssr: false }
-);
+import { createClient } from "@/utils/supabase/client";
+import { WalletButton } from "../WalletButton";
 
 export function HeroSection() {
   const { connected } = useWallet();
   const router = useRouter();
   const [showWalletButton, setShowWalletButton] = useState(false);
 
-  const handleRegisterClick = () => {
-    if (connected) {
-      router.push('/dashboard');
-    } else {
-      setShowWalletButton(true);
-    }
+  const handleStartNowClick = () => {
+    setShowWalletButton(true);
   };
 
   return (
@@ -39,16 +30,18 @@ export function HeroSection() {
               <div className="flex flex-col items-center gap-4">
                 <WalletButton />
                 <p className="text-sm text-gray-300">
-                  Connect your wallet to continue registration
+                  Connect your wallet to continue
                 </p>
               </div>
-            ) : (
+            ) : !connected && (
               <button
-                onClick={handleRegisterClick}
+                onClick={handleStartNowClick}
                 className="btn-primary group relative inline-flex items-center justify-center overflow-hidden rounded-lg bg-white px-8 py-3 font-medium text-[#0A2540] transition duration-300 ease-out hover:scale-[1.02]"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-[#0A2540] to-[#2A4E6E] opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-10"></span>
-                <span className="relative">START NOW</span>
+                <span className="relative">
+                  START NOW
+                </span>
               </button>
             )}
           </div>

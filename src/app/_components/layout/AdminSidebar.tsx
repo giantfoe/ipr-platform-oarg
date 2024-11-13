@@ -5,27 +5,29 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
+  Users,
   FileText,
-  User,
   Settings,
-  LogOut
+  LogOut,
+  Activity
 } from 'lucide-react'
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Applications', href: '/applications', icon: FileText },
-  { name: 'Profile', href: '/profile', icon: User },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Applications', href: '/admin/applications', icon: FileText },
+  { name: 'Users', href: '/admin/users', icon: Users },
+  { name: 'Activity', href: '/admin/activity', icon: Activity },
+  { name: 'Settings', href: '/admin/settings', icon: Settings },
 ]
 
-export function Sidebar() {
+export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
     <div className="flex min-h-screen w-64 flex-col border-r bg-white">
       <div className="flex h-16 shrink-0 items-center border-b px-6">
-        <Link href="/" className="text-xl font-semibold">
-          IP Register
+        <Link href="/admin" className="text-xl font-semibold text-primary">
+          Admin Panel
         </Link>
       </div>
       <nav className="flex flex-1 flex-col p-4">
@@ -48,6 +50,18 @@ export function Sidebar() {
             )
           })}
         </ul>
+        <div className="border-t pt-4">
+          <button
+            onClick={() => {
+              document.cookie = 'wallet_address=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
+              window.location.href = '/';
+            }}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <LogOut className="h-5 w-5" />
+            Disconnect Wallet
+          </button>
+        </div>
       </nav>
     </div>
   )
