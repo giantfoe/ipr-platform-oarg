@@ -3,45 +3,75 @@
 import { useWallet } from "@solana/wallet-adapter-react"
 import { useEffect, useState } from "react"
 import { createClient } from "@/utils/supabase/client"
-import { Loader2 } from "lucide-react"
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { Loader2, Shield } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/app/_components/ui/button"
 
 interface UserProfile {
   full_name: string | null
   company_name: string | null
   phone_number: string | null
   wallet_address: string
+  is_admin: boolean
 }
 
 export default function ProfilePage() {
   const { publicKey } = useWallet()
+  const router = useRouter()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
   useEffect(() => {
     async function loadProfile() {
-      if (!publicKey) return
+      if (!publicKey) {
+        setLoading(false)
+        return
+      }
 
       try {
         const supabase = createClient()
         const walletAddress = publicKey.toBase58()
         
-        const { data: profiles, error: queryError } = await supabase
+        console.log('Fetching profile for wallet:', walletAddress)
+
+        // First check if profile exists
+        const { data: existingProfile, error: fetchError } = await supabase
           .from('profiles')
           .select('*')
           .eq('wallet_address', walletAddress)
+          .single()
 
-        if (queryError) throw queryError
+        if (fetchError) {
+          if (fetchError.code === 'PGRST116') { // No profile found
+            console.log('No profile found, creating one...')
+            // Create a new profile
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert([
+                { 
+                  wallet_address: walletAddress,
+                  full_name: null,
+                  company_name: null,
+                  phone_number: null,
+                  is_admin: false
+                }
+              ])
+              .select()
+              .single()
 
-        if (profiles && profiles.length > 0) {
-          setProfile(profiles[0])
+            if (createError) throw createError
+            setProfile(newProfile)
+          } else {
+            throw fetchError
+          }
+        } else {
+          setProfile(existingProfile)
         }
-      } catch (err) {
-        console.error('Error in loadProfile:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load profile')
+
+      } catch (err: any) {
+        console.error('Error loading profile:', err.message || err)
+        setError(err.message || 'Failed to load profile')
       } finally {
         setLoading(false)
       }
@@ -58,27 +88,22 @@ export default function ProfilePage() {
     )
   }
 
-  // If no profile exists, show registration prompt
-  if (!profile) {
+  if (error) {
     return (
       <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <h2 className="text-lg font-semibold text-yellow-800 mb-2">Profile Not Found</h2>
-          <p className="text-yellow-700 mb-4">
-            Please complete your profile registration to access all features.
-          </p>
-          <Link
-            href="/onboarding"
-            className="inline-block px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+        <div className="bg-red-50 text-red-700 p-4 rounded-md">
+          {error}
+          <button 
+            onClick={() => window.location.reload()}
+            className="ml-4 text-sm underline"
           >
-            Complete Registration
-          </Link>
+            Try again
+          </button>
         </div>
       </div>
     )
   }
 
-  // Display profile information if it exists
   return (
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Profile Information</h1>
@@ -86,29 +111,48 @@ export default function ProfilePage() {
       <div className="bg-white shadow rounded-lg p-6">
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-500">Full Name</label>
-            <p className="mt-1 text-lg font-medium">{profile.full_name}</p>
+            <label className="text-sm text-gray-500">Full Name</label>
+            <p className="font-medium">{profile?.full_name || 'Not set'}</p>
           </div>
 
-          {profile.company_name && (
-            <div>
-              <label className="block text-sm font-medium text-gray-500">Company Name</label>
-              <p className="mt-1 text-lg font-medium">{profile.company_name}</p>
-            </div>
-          )}
+          <div>
+            <label className="text-sm text-gray-500">Company Name</label>
+            <p className="font-medium">{profile?.company_name || 'Not set'}</p>
+          </div>
 
-          {profile.phone_number && (
-            <div>
-              <label className="block text-sm font-medium text-gray-500">Phone Number</label>
-              <p className="mt-1 text-lg font-medium">{profile.phone_number}</p>
-            </div>
-          )}
+          <div>
+            <label className="text-sm text-gray-500">Phone Number</label>
+            <p className="font-medium">{profile?.phone_number || 'Not set'}</p>
+          </div>
 
           <div className="pt-4 border-t">
             <p className="text-sm text-gray-500">
-              Wallet Address: <span className="font-mono">{profile.wallet_address}</span>
+              Wallet Address: <span className="font-mono">{profile?.wallet_address}</span>
             </p>
           </div>
+
+          {/* Admin Panel Access */}
+          {profile?.is_admin && (
+            <div className="mt-8 p-4 bg-primary/5 rounded-lg border-2 border-primary/10">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    Admin Access
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    You have administrator privileges
+                  </p>
+                </div>
+                <Button
+                  onClick={() => router.push('/admin')}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  Access Admin Panel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

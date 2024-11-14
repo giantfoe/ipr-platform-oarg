@@ -19,17 +19,23 @@ export async function middleware(request: NextRequest) {
   // Check admin routes
   if (pathname.startsWith('/admin')) {
     try {
+      console.log('Checking admin access for:', walletAddress) // Debug log
+      
       const supabase = createClient()
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('is_admin')
         .eq('wallet_address', walletAddress)
         .single()
 
+      console.log('Admin check result:', { profile, error }) // Debug log
+
       if (!profile?.is_admin) {
+        console.log('Access denied: Not an admin') // Debug log
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
     } catch (error) {
+      console.error('Admin check error:', error) // Debug log
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
