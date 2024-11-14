@@ -44,3 +44,47 @@ create trigger update_profiles_updated_at
     execute procedure update_updated_at_column();
 
 -- Repeat for other tables 
+
+-- Fix status_history table and permissions
+ALTER TABLE status_history DROP CONSTRAINT IF EXISTS status_history_created_by_fkey;
+ALTER TABLE status_history DROP CONSTRAINT IF EXISTS status_history_application_id_fkey;
+
+-- Recreate constraints with proper cascade
+ALTER TABLE status_history 
+  ADD CONSTRAINT status_history_created_by_fkey 
+    FOREIGN KEY (created_by) 
+    REFERENCES profiles(wallet_address) 
+    ON DELETE SET NULL,
+  ADD CONSTRAINT status_history_application_id_fkey 
+    FOREIGN KEY (application_id) 
+    REFERENCES ip_applications(id) 
+    ON DELETE CASCADE;
+
+-- Update RLS policies
+DROP POLICY IF EXISTS "Enable admin write access" ON status_history;
+DROP POLICY IF EXISTS "Enable read access for owners and admins" ON status_history;
+
+-- Create new policies
+CREATE POLICY "Enable all access for admins"
+ON status_history
+USING (
+  EXISTS (
+    SELECT 1 FROM profiles
+    WHERE profiles.wallet_address = auth.jwt() ->> 'wallet_address'
+    AND profiles.is_admin = true
+  )
+);
+
+CREATE POLICY "Enable read access for application owners"
+ON status_history
+FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM ip_applications
+    WHERE ip_applications.id = status_history.application_id
+    AND ip_applications.wallet_address = auth.jwt() ->> 'wallet_address'
+  )
+);
+
+-- Grant proper permissions
+GRANT ALL ON status_history TO authenticated;

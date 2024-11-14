@@ -9,9 +9,7 @@ export default function ClientOnly({ children }: { children: React.ReactNode }) 
     setHasMounted(true)
   }, [])
 
-  if (!hasMounted) {
-    return null
-  }
+  if (!hasMounted) return null
 
   return <>{children}</>
 } 

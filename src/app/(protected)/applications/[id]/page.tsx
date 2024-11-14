@@ -1,14 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { Loader2 } from 'lucide-react'
+import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
+import { StatusBadge } from '@/app/_components/ui/StatusBadge'
+import { use } from 'react'
 
 interface Application {
   id: string
   title: string
+  description: string
+  application_type: string
   status: string
-  // ... other fields
+  created_at: string
+  wallet_address: string
 }
 
 interface StatusHistory {
@@ -25,21 +30,26 @@ interface StatusHistory {
 export default function ApplicationDetailPage({
   params
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  // Properly unwrap the params using React.use()
+  const { id } = use(params)
   const [application, setApplication] = useState<Application | null>(null)
   const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function loadApplication() {
+  const loadApplication = useCallback(async () => {
+    if (!id) return
+
+    try {
       const supabase = createClient()
       
       // Fetch application details
       const { data: appData, error: appError } = await supabase
         .from('ip_applications')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', id)
         .single()
 
       if (appError) throw appError
@@ -54,49 +64,65 @@ export default function ApplicationDetailPage({
             full_name
           )
         `)
-        .eq('application_id', params.id)
+        .eq('application_id', id)
         .order('created_at', { ascending: false })
 
       if (historyError) throw historyError
-      setStatusHistory(historyData)
+      setStatusHistory(historyData || [])
+    } catch (err) {
+      console.error('Error loading application:', err)
+      setError('Failed to load application details')
+    } finally {
       setLoading(false)
     }
+  }, [id])
 
+  useEffect(() => {
+    let mounted = true
+    const supabase = createClient()
+
+    // Load initial data
     loadApplication()
 
     // Set up real-time subscriptions
-    const supabase = createClient()
-    
-    // Subscribe to application changes
-    const applicationSubscription = supabase
-      .channel('application-updates')
+    const applicationChannel = supabase
+      .channel(`application-${id}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'ip_applications',
-          filter: `id=eq.${params.id}`
+          filter: `id=eq.${id}`
         },
-        (payload) => {
-          setApplication(payload.new as Application)
+        async (payload) => {
+          if (!mounted) return
+          console.log('Application update received:', payload)
+          
+          if (payload.eventType === 'UPDATE') {
+            setApplication((prev) => ({
+              ...prev,
+              ...payload.new,
+            } as Application))
+          }
         }
       )
       .subscribe()
 
-    // Subscribe to status history changes
-    const historySubscription = supabase
-      .channel('status-history-updates')
+    const historyChannel = supabase
+      .channel(`history-${id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'status_history',
-          filter: `application_id=eq.${params.id}`
+          filter: `application_id=eq.${id}`
         },
         async (payload) => {
-          // Fetch the new status history with profile information
+          if (!mounted) return
+          console.log('Status history update received:', payload)
+
           const { data } = await supabase
             .from('status_history')
             .select(`
@@ -108,46 +134,52 @@ export default function ApplicationDetailPage({
             .eq('id', payload.new.id)
             .single()
 
-          if (data) {
+          if (data && mounted) {
             setStatusHistory(prev => [data, ...prev])
           }
         }
       )
       .subscribe()
 
+    // Cleanup function
     return () => {
-      applicationSubscription.unsubscribe()
-      historySubscription.unsubscribe()
+      mounted = false
+      applicationChannel.unsubscribe()
+      historyChannel.unsubscribe()
     }
-  }, [params.id])
+  }, [id, loadApplication])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  if (error || !application) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-red-50 text-red-700 p-4 rounded-md">
+          {error || 'Application not found'}
+        </div>
       </div>
     )
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Application Details */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <h1 className="text-2xl font-bold mb-4">{application?.title}</h1>
+        <h1 className="text-2xl font-bold mb-4">{application.title}</h1>
         <div className="flex items-center gap-2 mb-6">
           <span className="text-sm font-medium">Status:</span>
-          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-            application?.status === 'approved' ? 'bg-green-100 text-green-800' :
-            application?.status === 'rejected' ? 'bg-red-100 text-red-800' :
-            'bg-yellow-100 text-yellow-800'
-          }`}>
-            {application?.status}
-          </span>
+          <StatusBadge status={application.status as any} />
         </div>
-        {/* ... other application details ... */}
+        <div className="prose prose-sm max-w-none">
+          <p>{application.description}</p>
+        </div>
       </div>
 
-      {/* Status History */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-semibold mb-4">Status History</h2>
         <div className="space-y-4">

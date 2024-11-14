@@ -1,6 +1,7 @@
 'use client'
 
 import { Loader2 } from 'lucide-react'
+import ClientOnly from '../ClientOnly'
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg'
@@ -15,9 +16,11 @@ const SIZES = {
 
 export function LoadingSpinner({ size = 'md', className = '' }: LoadingSpinnerProps) {
   return (
-    <Loader2 
-      className={`animate-spin text-primary ${SIZES[size]} ${className}`}
-      aria-label="Loading"
-    />
+    <ClientOnly>
+      <Loader2 
+        className={`animate-spin text-primary ${SIZES[size]} ${className}`}
+        aria-label="Loading"
+      />
+    </ClientOnly>
   )
 } 
