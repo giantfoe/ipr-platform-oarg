@@ -1,94 +1,125 @@
 'use client'
 
-import { useWallet } from "@solana/wallet-adapter-react"
-import { useEffect, useState } from "react"
-import { createClient } from "@/utils/supabase/client"
-import { Loader2 } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import { Loader2 } from 'lucide-react'
 
-interface IPApplication {
+interface Application {
   id: string
   title: string
-  description: string
-  application_type: 'patent' | 'trademark' | 'copyright'
-  status: 'draft' | 'pending' | 'in-review' | 'approved' | 'rejected'
-  regions: string[]
+  status: string
+  // ... other fields
+}
+
+interface StatusHistory {
+  id: string
+  status: string
+  notes: string
   created_at: string
-  updated_at: string
+  created_by: string
+  profiles: {
+    full_name: string
+  }
 }
 
-const statusColors = {
-  draft: 'bg-gray-100 text-gray-800',
-  pending: 'bg-yellow-100 text-yellow-800',
-  'in-review': 'bg-blue-100 text-blue-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-}
-
-export default function ApplicationPage({ params }: { params: { id: string } }) {
-  const { publicKey } = useWallet()
-  const router = useRouter()
-  const [application, setApplication] = useState<IPApplication | null>(null)
+export default function ApplicationDetailPage({
+  params
+}: {
+  params: { id: string }
+}) {
+  const [application, setApplication] = useState<Application | null>(null)
+  const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
 
   useEffect(() => {
     async function loadApplication() {
-      if (!publicKey) return
+      const supabase = createClient()
+      
+      // Fetch application details
+      const { data: appData, error: appError } = await supabase
+        .from('ip_applications')
+        .select('*')
+        .eq('id', params.id)
+        .single()
 
-      try {
-        const supabase = createClient()
-        const { data, error: fetchError } = await supabase
-          .from('ip_applications')
-          .select('*')
-          .eq('id', params.id)
-          .single()
+      if (appError) throw appError
+      setApplication(appData)
 
-        if (fetchError) throw fetchError
+      // Fetch status history
+      const { data: historyData, error: historyError } = await supabase
+        .from('status_history')
+        .select(`
+          *,
+          profiles (
+            full_name
+          )
+        `)
+        .eq('application_id', params.id)
+        .order('created_at', { ascending: false })
 
-        if (data.wallet_address !== publicKey.toBase58()) {
-          router.push('/applications')
-          return
-        }
-
-        setApplication(data)
-      } catch (err) {
-        console.error('Error loading application:', err)
-        setError('Failed to load application')
-      } finally {
-        setLoading(false)
-      }
+      if (historyError) throw historyError
+      setStatusHistory(historyData)
+      setLoading(false)
     }
 
     loadApplication()
-  }, [publicKey, params.id, router])
 
-  const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!publicKey || !application) return
+    // Set up real-time subscriptions
+    const supabase = createClient()
+    
+    // Subscribe to application changes
+    const applicationSubscription = supabase
+      .channel('application-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ip_applications',
+          filter: `id=eq.${params.id}`
+        },
+        (payload) => {
+          setApplication(payload.new as Application)
+        }
+      )
+      .subscribe()
 
-    try {
-      const formData = new FormData(e.currentTarget)
-      const supabase = createClient()
+    // Subscribe to status history changes
+    const historySubscription = supabase
+      .channel('status-history-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'status_history',
+          filter: `application_id=eq.${params.id}`
+        },
+        async (payload) => {
+          // Fetch the new status history with profile information
+          const { data } = await supabase
+            .from('status_history')
+            .select(`
+              *,
+              profiles (
+                full_name
+              )
+            `)
+            .eq('id', payload.new.id)
+            .single()
 
-      const { error: updateError } = await supabase
-        .from('ip_applications')
-        .update({
-          title: formData.get('title'),
-          description: formData.get('description'),
-        })
-        .eq('id', application.id)
+          if (data) {
+            setStatusHistory(prev => [data, ...prev])
+          }
+        }
+      )
+      .subscribe()
 
-      if (updateError) throw updateError
-
-      // Refresh the page to show updated data
-      window.location.reload()
-    } catch (err) {
-      console.error('Error updating application:', err)
-      setError('Failed to update application')
+    return () => {
+      applicationSubscription.unsubscribe()
+      historySubscription.unsubscribe()
     }
-  }
+  }, [params.id])
 
   if (loading) {
     return (
@@ -98,114 +129,47 @@ export default function ApplicationPage({ params }: { params: { id: string } }) 
     )
   }
 
-  if (!application) {
-    return (
-      <div className="max-w-3xl mx-auto p-6">
-        <div className="bg-red-50 text-red-700 p-4 rounded-md">
-          Application not found
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Application Details</h1>
-        {application.status === 'draft' && (
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
-          >
-            {isEditing ? 'Cancel Edit' : 'Edit Application'}
-          </button>
-        )}
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Application Details */}
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <h1 className="text-2xl font-bold mb-4">{application?.title}</h1>
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm font-medium">Status:</span>
+          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+            application?.status === 'approved' ? 'bg-green-100 text-green-800' :
+            application?.status === 'rejected' ? 'bg-red-100 text-red-800' :
+            'bg-yellow-100 text-yellow-800'
+          }`}>
+            {application?.status}
+          </span>
+        </div>
+        {/* ... other application details ... */}
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        {isEditing ? (
-          <form onSubmit={handleUpdate} className="space-y-6">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-                Title
-              </label>
-              <input
-                type="text"
-                name="title"
-                id="title"
-                defaultValue={application.title}
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+      {/* Status History */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h2 className="text-lg font-semibold mb-4">Status History</h2>
+        <div className="space-y-4">
+          {statusHistory.map((history) => (
+            <div key={history.id} className="flex items-center justify-between py-2 border-b">
+              <div>
+                <p className="text-sm font-medium">
+                  Status changed to: <span className="font-semibold">{history.status}</span>
+                </p>
+                <p className="text-sm text-gray-500">
+                  By {history.profiles.full_name}
+                </p>
+                {history.notes && (
+                  <p className="text-sm text-gray-600 mt-1">{history.notes}</p>
+                )}
+              </div>
+              <span className="text-sm text-gray-500">
+                {new Date(history.created_at).toLocaleDateString()}
+              </span>
             </div>
-
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                Description
-              </label>
-              <textarea
-                name="description"
-                id="description"
-                rows={4}
-                defaultValue={application.description}
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
-              >
-                Save Changes
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">{application.title}</h3>
-              <p className="mt-1 text-sm text-gray-600">{application.description}</p>
-            </div>
-
-            <div className="border-t pt-4">
-              <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Application Type</dt>
-                  <dd className="mt-1 text-sm text-gray-900 capitalize">{application.application_type}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Status</dt>
-                  <dd className="mt-1">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[application.status]}`}>
-                      {application.status}
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Regions</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {application.regions.join(', ')}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Created</dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {new Date(application.created_at).toLocaleDateString()}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-        )}
+          ))}
+        </div>
       </div>
     </div>
   )
