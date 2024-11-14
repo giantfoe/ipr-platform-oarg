@@ -5,7 +5,7 @@ export async function middleware(request: NextRequest) {
   const walletAddress = request.cookies.get('wallet_address')?.value
 
   // Protected routes that require wallet connection
-  const protectedRoutes = ['/dashboard', '/profile', '/applications', '/documents']
+  const protectedRoutes = ['/dashboard', '/profile', '/applications', '/documents', '/resources']
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
 
   // Only check for wallet connection on protected routes

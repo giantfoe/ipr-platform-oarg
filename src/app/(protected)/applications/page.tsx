@@ -1,12 +1,12 @@
 'use client'
 
-import { useWallet } from "@solana/wallet-adapter-react"
-import { useEffect, useState } from "react"
-import { createClient } from "@/utils/supabase/client"
-import { Loader2, Plus } from "lucide-react"
+import { useEffect, useState } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import { Loader2, Plus } from 'lucide-react'
 import Link from 'next/link'
+import { useWallet } from "@solana/wallet-adapter-react"
 
-interface IPApplication {
+interface Application {
   id: string
   title: string
   description: string
@@ -14,6 +14,7 @@ interface IPApplication {
   status: 'draft' | 'pending' | 'in-review' | 'approved' | 'rejected'
   regions: string[]
   created_at: string
+  wallet_address: string
 }
 
 const statusColors = {
@@ -26,7 +27,7 @@ const statusColors = {
 
 export default function ApplicationsPage() {
   const { publicKey } = useWallet()
-  const [applications, setApplications] = useState<IPApplication[]>([])
+  const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,18 +37,26 @@ export default function ApplicationsPage() {
 
       try {
         const supabase = createClient()
+        const walletAddress = publicKey.toBase58()
+
+        console.log('Fetching applications for wallet:', walletAddress) // Debug log
+
         const { data, error: fetchError } = await supabase
           .from('ip_applications')
           .select('*')
-          .eq('wallet_address', publicKey.toBase58())
+          .eq('wallet_address', walletAddress)
           .order('created_at', { ascending: false })
 
-        if (fetchError) throw fetchError
+        if (fetchError) {
+          console.error('Supabase error:', fetchError) // Debug log
+          throw fetchError
+        }
 
+        console.log('Applications data:', data) // Debug log
         setApplications(data || [])
       } catch (err) {
         console.error('Error loading applications:', err)
-        setError('Failed to load applications')
+        setError('Failed to load applications. Please try again.')
       } finally {
         setLoading(false)
       }
