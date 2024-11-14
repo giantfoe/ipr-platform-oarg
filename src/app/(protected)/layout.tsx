@@ -2,56 +2,46 @@
 
 import { useWallet } from "@solana/wallet-adapter-react"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-import { ErrorBoundary } from "react-error-boundary"
+import { useEffect, useState } from "react"
 import { Sidebar } from "@/app/_components/layout/Sidebar"
-
-function ErrorFallback() {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <h2 className="text-lg font-semibold">Something went wrong</h2>
-        <button 
-          onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-        >
-          Try again
-        </button>
-      </div>
-    </div>
-  )
-}
+import { LoadingSpinner } from "@/app/_components/ui/LoadingSpinner"
+import ClientOnly from "@/app/_components/ClientOnly"
 
 export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { connected } = useWallet()
+  const { publicKey } = useWallet()
   const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (!connected) {
-      router.replace('/')
+    if (!publicKey) {
+      router.push('/')
+      return
     }
-  }, [connected, router])
+    setIsLoading(false)
+  }, [publicKey, router])
 
-  if (!connected) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse">Loading...</div>
-      </div>
+      <ClientOnly>
+        <div className="flex items-center justify-center min-h-screen">
+          <LoadingSpinner size="lg" />
+        </div>
+      </ClientOnly>
     )
   }
 
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <div className="flex min-h-screen bg-custom-background">
+    <ClientOnly>
+      <div className="flex min-h-screen">
         <Sidebar />
-        <main className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto">
           {children}
-        </main>
+        </div>
       </div>
-    </ErrorBoundary>
+    </ClientOnly>
   )
 } 

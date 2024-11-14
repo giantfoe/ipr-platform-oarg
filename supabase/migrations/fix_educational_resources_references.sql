@@ -1,7 +1,7 @@
--- Drop existing table if it exists
+-- Drop existing table and its dependencies
 DROP TABLE IF EXISTS public.educational_resources CASCADE;
 
--- Create educational resources table
+-- Recreate educational resources table with correct reference type
 CREATE TABLE public.educational_resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE public.educational_resources (
     content TEXT NOT NULL,
     file_url TEXT,
     author TEXT NOT NULL,
-    created_by UUID REFERENCES profiles(id),
+    created_by TEXT REFERENCES profiles(wallet_address),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     published BOOLEAN DEFAULT false,
@@ -26,6 +26,7 @@ CREATE INDEX idx_resources_slug ON educational_resources(slug);
 CREATE INDEX idx_resources_type ON educational_resources(type);
 CREATE INDEX idx_resources_created_at ON educational_resources(created_at DESC);
 CREATE INDEX idx_resources_published ON educational_resources(published);
+CREATE INDEX idx_resources_created_by ON educational_resources(created_by);
 
 -- Create policies
 CREATE POLICY "Everyone can view published resources"

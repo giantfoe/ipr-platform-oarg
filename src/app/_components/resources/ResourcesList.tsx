@@ -3,22 +3,42 @@
 import { useState } from 'react'
 import { ResourceCard } from './ResourceCard'
 import { Button } from '@/app/_components/ui/button'
-import { Search, Filter } from 'lucide-react'
+import { Search } from 'lucide-react'
+
+interface Resource {
+  id: string
+  title: string
+  type: 'patent' | 'trademark' | 'copyright'
+  description: string
+  content: string
+  file_url?: string
+  author: string
+  created_at: string
+  slug: string
+  published: boolean
+}
+
+interface ResourcesListProps {
+  resources: Resource[]
+}
 
 const RESOURCE_TYPES = ['patent', 'trademark', 'copyright'] as const
 
-export function ResourcesList({ resources = [] }) {
+export function ResourcesList({ resources = [] }: ResourcesListProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<string | null>(null)
 
-  const filteredResources = resources.filter(resource => {
-    const matchesSearch = resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      resource.description.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesType = !selectedType || resource.type === selectedType
+  // Only show published resources to regular users
+  const filteredResources = resources
+    .filter(resource => resource.published)
+    .filter(resource => {
+      const matchesSearch = resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        resource.description.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesType = !selectedType || resource.type === selectedType
 
-    return matchesSearch && matchesType
-  })
+      return matchesSearch && matchesType
+    })
 
   return (
     <div className="space-y-6">

@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/app/_providers/ThemeProvider'
 import { Toaster } from '@/components/ui/toaster'
 import { NavbarWrapper } from './_components/layout/NavbarWrapper'
 import { AdminDetector } from './_components/AdminDetector'
+import ClientOnly from './_components/ClientOnly'
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -18,17 +19,19 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="light" suppressHydrationWarning>
-      <body>
-        <ThemeProvider defaultTheme="light">
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
+        <ThemeProvider defaultTheme="light" attribute="class">
           <WalletProvider>
             <AuthProvider>
-              <NavbarWrapper />
-              <main className="pt-16">
-                {children}
-              </main>
-              <AdminDetector />
-              <Toaster />
+              <ClientOnly>
+                <NavbarWrapper />
+                <main className="pt-16">
+                  {children}
+                </main>
+                <AdminDetector />
+                <Toaster />
+              </ClientOnly>
             </AuthProvider>
           </WalletProvider>
         </ThemeProvider>
