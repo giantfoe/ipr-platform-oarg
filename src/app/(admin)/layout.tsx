@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { createClient } from "@/utils/supabase/client"
 import { AdminSidebar } from "@/app/_components/layout/AdminSidebar"
+import { Loader2 } from "lucide-react"
 
 export default function AdminLayout({
   children,
@@ -15,7 +16,6 @@ export default function AdminLayout({
   const router = useRouter()
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
     async function checkAdminStatus() {
@@ -24,28 +24,35 @@ export default function AdminLayout({
         return
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('wallet_address', publicKey.toBase58())
-        .single()
+      try {
+        const supabase = createClient()
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('wallet_address', publicKey.toBase58())
+          .single()
 
-      if (!profile?.is_admin) {
+        if (!profile?.is_admin) {
+          router.replace('/dashboard')
+          return
+        }
+
+        setIsAdmin(true)
+      } catch (error) {
+        console.error('Error checking admin status:', error)
         router.replace('/dashboard')
-        return
+      } finally {
+        setLoading(false)
       }
-
-      setIsAdmin(true)
-      setLoading(false)
     }
 
     checkAdminStatus()
-  }, [publicKey, router, supabase])
+  }, [publicKey, router])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse">Loading...</div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }

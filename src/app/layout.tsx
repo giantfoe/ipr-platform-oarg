@@ -4,6 +4,7 @@ import { AuthProvider } from '@/app/_providers/AuthProvider'
 import { ThemeProvider } from '@/app/_providers/ThemeProvider'
 import { Toaster } from '@/components/ui/toaster'
 import { NavbarWrapper } from './_components/layout/NavbarWrapper'
+import { AdminDetector } from './_components/AdminDetector'
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -26,6 +27,7 @@ export default function RootLayout({
               <main className="pt-16">
                 {children}
               </main>
+              <AdminDetector />
               <Toaster />
             </AuthProvider>
           </WalletProvider>

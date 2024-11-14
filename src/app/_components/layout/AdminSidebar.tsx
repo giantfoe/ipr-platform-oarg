@@ -8,14 +8,16 @@ import {
   Users,
   FileText,
   Settings,
-  LogOut,
-  Activity
+  Activity,
+  BookOpen,
+  LogOut
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Applications', href: '/admin/applications', icon: FileText },
   { name: 'Users', href: '/admin/users', icon: Users },
+  { name: 'Resources', href: '/admin/resources', icon: BookOpen },
   { name: 'Activity', href: '/admin/activity', icon: Activity },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ]
