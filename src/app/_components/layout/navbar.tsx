@@ -20,13 +20,13 @@ export default function Navbar() {
               href="/about" 
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              About
+              {/* About */}
             </Link>
             <Link 
               href="/pricing" 
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Pricing
+              {/* Pricing */}
             </Link>
             {connected && (
               <Link

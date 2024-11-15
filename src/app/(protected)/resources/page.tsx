@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
-import { Search } from 'lucide-react'
-import { Button } from '@/app/_components/ui/button'
+import Link from 'next/link'
 import ClientOnly from '@/app/_components/ClientOnly'
 
 interface Resource {
@@ -12,12 +11,10 @@ interface Resource {
   title: string
   type: 'patent' | 'trademark' | 'copyright'
   description: string
-  content: string
-  file_url?: string
+  fileUrl?: string
   author: string
   created_at: string
   slug: string
-  published: boolean
 }
 
 const RESOURCE_TYPES = ['patent', 'trademark', 'copyright'] as const
@@ -93,11 +90,10 @@ export default function ResourcesPage() {
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="search"
                 placeholder="Search resources..."
-                className="w-full pl-9 pr-4 py-2 bg-background border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-4 py-2 bg-white border rounded-md focus:outline-none focus:ring-2 focus:ring-primary text-gray-900"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -106,14 +102,17 @@ export default function ResourcesPage() {
             {/* Filter */}
             <div className="flex gap-2">
               {RESOURCE_TYPES.map((type) => (
-                <Button
+                <button
                   key={type}
-                  variant={selectedType === type ? 'default' : 'outline'}
-                  size="sm"
                   onClick={() => setSelectedType(selectedType === type ? null : type)}
+                  className={`px-4 py-2 text-sm font-medium rounded-md ${
+                    selectedType === type 
+                      ? 'bg-primary text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
                 >
                   {type}
-                </Button>
+                </button>
               ))}
             </div>
           </div>

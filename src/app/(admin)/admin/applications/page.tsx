@@ -135,7 +135,7 @@ export default function AdminApplicationsPage() {
                         value={app.status}
                         onChange={(e) => handleStatusChange(app.id, e.target.value)}
                         disabled={updating === app.id}
-                        className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-primary focus:outline-none focus:ring-primary sm:text-sm"
+                        className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-[#635BFF] focus:outline-none focus:ring-[#635BFF] sm:text-sm disabled:opacity-50 bg-white"
                       >
                         <option value="draft">Draft</option>
                         <option value="pending">Pending</option>

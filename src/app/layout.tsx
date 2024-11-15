@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <ThemeProvider defaultTheme="light" attribute="class">
+        <ThemeProvider>
           <WalletProvider>
             <AuthProvider>
               <ClientOnly>

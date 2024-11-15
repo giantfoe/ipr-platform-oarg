@@ -1,7 +1,13 @@
-export interface APIResponse<T = any> {
+export interface APIResponse<T = Record<string, unknown>> {
   data?: T
   error?: string | { message: string }
   status: number
+}
+
+export interface ErrorResponse {
+  message: string
+  code?: string
+  details?: unknown
 }
 
 export interface Profile {

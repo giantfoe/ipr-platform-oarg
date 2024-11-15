@@ -20,18 +20,17 @@ interface ResourceDetail {
 }
 
 interface PageProps {
-  params: Promise<{ slug: string }>
+  params: { slug: string }
 }
 
 export default function ResourceDetailPage({ params }: PageProps) {
   const [resource, setResource] = useState<ResourceDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { slug } = React.use(params)
 
   useEffect(() => {
     async function loadResource() {
-      if (!slug) return
+      if (!params.slug) return
 
       try {
         const supabase = createClient()
@@ -48,7 +47,7 @@ export default function ResourceDetailPage({ params }: PageProps) {
             created_at,
             slug
           `)
-          .eq('slug', slug)
+          .eq('slug', params.slug)
           .single()
 
         if (fetchError) {
@@ -66,7 +65,7 @@ export default function ResourceDetailPage({ params }: PageProps) {
     }
 
     loadResource()
-  }, [slug])
+  }, [params.slug])
 
   return (
     <ClientOnly>

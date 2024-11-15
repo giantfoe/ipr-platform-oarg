@@ -1,15 +1,15 @@
 "use client";
 
-import { ShieldCheckIcon, BriefcaseIcon, ScaleIcon } from '@heroicons/react/24/solid';
+import { 
+  ShieldCheckIcon,
+  DocumentCheckIcon,
+  GlobeAltIcon,
+  UserGroupIcon
+} from '@heroicons/react/24/outline';
 
-export const ProtectionIcon = () => (
-  <ShieldCheckIcon className="h-6 w-6" />
-);
-
-export const BusinessGrowthIcon = () => (
-  <BriefcaseIcon className="h-6 w-6" />
-);
-
-export const LegalIcon = () => (
-  <ScaleIcon className="h-6 w-6" />
-); 
+export const BenefitsIcons = {
+  ShieldCheckIcon,
+  DocumentCheckIcon,
+  GlobeAltIcon,
+  UserGroupIcon
+} 

@@ -17,11 +17,11 @@ export function ContactSupport() {
             <span>Email Us</span>
           </a>
           <a href="tel:+1234567890" className="flex flex-col items-center text-[#635BFF] hover:text-[#0A2540]">
-            <PhoneContactIcon className="h-6 w-6" />
+            <PhoneContactIcon className="h-6 w-6" aria-hidden="true" />
             <span>Call Us</span>
           </a>
           <Link href="/chat" className="flex flex-col items-center text-[#635BFF] hover:text-[#0A2540]">
-            <ChatIcon className="h-6 w-6" />
+            <ChatIcon className="h-6 w-6" aria-hidden="true" />
             <span>Live Chat</span>
           </Link>
         </div>

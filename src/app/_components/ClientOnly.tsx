@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 
 export default function ClientOnly({ children }: { children: React.ReactNode }) {
-  const [hasMounted, setHasMounted] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setHasMounted(true)
+    setMounted(true)
   }, [])
 
-  if (!hasMounted) return null
+  if (!mounted) return null
 
   return <>{children}</>
 } 

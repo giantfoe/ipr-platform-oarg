@@ -1,17 +1,24 @@
 'use client'
 
-import { useEffect, useState } from "react"
+import { useTheme } from 'next-themes'
+import { Sun, Moon, Monitor, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useWallet } from "@solana/wallet-adapter-react"
-import { createClient } from "@/utils/supabase/client"
-import { Loader2, Shield } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { Button } from "@/app/_components/ui/button"
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme()
   const { publicKey } = useWallet()
   const router = useRouter()
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     async function checkAdminStatus() {
@@ -40,7 +47,7 @@ export default function SettingsPage() {
     router.push('/admin')
   }
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -86,26 +93,16 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Admin Access Section - Only shown to admin users */}
+      {/* Admin Access Section */}
       {isAdmin && (
-        <div className="bg-card rounded-lg shadow-sm p-6 border-2 border-primary/10">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Shield className="h-5 w-5 text-primary" />
-                Admin Access
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Access the admin dashboard to manage applications and users
-              </p>
-            </div>
-            <Button
-              onClick={handleAdminAccess}
-              className="bg-primary hover:bg-primary/90"
-            >
-              Access Admin Panel
-            </Button>
-          </div>
+        <div className="bg-card rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-medium mb-4">Admin Access</h2>
+          <button
+            onClick={handleAdminAccess}
+            className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90"
+          >
+            Access Admin Dashboard
+          </button>
         </div>
       )}
     </div>
