@@ -6,58 +6,67 @@ import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 import Link from 'next/link'
 import ClientOnly from '@/app/_components/ClientOnly'
 
-interface Resource {
+interface WrittenResource {
   id: string
   title: string
+  slug: string
   type: 'patent' | 'trademark' | 'copyright'
   description: string
-  fileUrl?: string
+  content: string
   author: string
+  published: boolean
+  category: string
+  reading_time?: number
   created_at: string
-  slug: string
 }
 
 const RESOURCE_TYPES = ['patent', 'trademark', 'copyright'] as const
 
 export default function ResourcesPage() {
-  const [resources, setResources] = useState<Resource[]>([])
+  const [resources, setResources] = useState<WrittenResource[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadResources() {
       try {
         const supabase = createClient()
-        const { data, error: fetchError } = await supabase
-          .from('educational_resources')
+        const query = supabase
+          .from('written_resources')
           .select('*')
           .eq('published', true)
           .order('created_at', { ascending: false })
 
-        if (fetchError) throw fetchError
+        if (selectedType) {
+          query.eq('type', selectedType)
+        }
+        if (selectedCategory) {
+          query.eq('category', selectedCategory)
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
         setResources(data || [])
       } catch (err) {
         console.error('Error loading resources:', err)
-        setError('Failed to load resources')
       } finally {
         setLoading(false)
       }
     }
 
     loadResources()
-  }, [])
+  }, [selectedType, selectedCategory])
 
-  // Filter resources based on search and type
   const filteredResources = resources.filter(resource => {
-    const matchesSearch = 
-      resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      resource.description.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesType = !selectedType || resource.type === selectedType
-
-    return matchesSearch && matchesType
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      resource.title.toLowerCase().includes(searchLower) ||
+      resource.description.toLowerCase().includes(searchLower) ||
+      resource.content.toLowerCase().includes(searchLower)
+    )
   })
 
   if (loading) {
@@ -79,12 +88,6 @@ export default function ResourcesPage() {
             </p>
           </div>
         </div>
-
-        {error && (
-          <div className="bg-red-50 text-red-700 p-4 rounded-md mb-6">
-            {error}
-          </div>
-        )}
 
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-4">

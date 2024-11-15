@@ -7,9 +7,11 @@ import { StatusBadge } from '@/app/_components/ui/StatusBadge'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 import { useWallet } from "@solana/wallet-adapter-react"
 import ClientOnly from '@/app/_components/ClientOnly'
+import { useRouter } from 'next/navigation'
 
 export default function AdminApplicationsPage() {
   const { publicKey } = useWallet()
+  const router = useRouter()
   const [applications, setApplications] = useState([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
@@ -115,7 +117,11 @@ export default function AdminApplicationsPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {applications.map((app) => (
-                <tr key={app.id}>
+                <tr 
+                  key={app.id}
+                  onClick={() => router.push(`/admin/applications/${app.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                >
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{app.title}</div>
                     <div className="text-sm text-gray-500">{app.description}</div>
@@ -129,13 +135,16 @@ export default function AdminApplicationsPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge status={app.status} />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td 
+                    className="px-6 py-4 whitespace-nowrap"
+                    onClick={(e) => e.stopPropagation()} // Prevent row click when interacting with select
+                  >
                     <div className="flex items-center gap-2">
                       <select
                         value={app.status}
                         onChange={(e) => handleStatusChange(app.id, e.target.value)}
                         disabled={updating === app.id}
-                        className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-[#635BFF] focus:outline-none focus:ring-[#635BFF] sm:text-sm disabled:opacity-50 bg-white"
+                        className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-[#635BFF] focus:outline-none focus:ring-[#635BFF] sm:text-sm disabled:opacity-50 bg-white text-gray-900"
                       >
                         <option value="draft">Draft</option>
                         <option value="pending">Pending</option>

@@ -1,31 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil } from 'lucide-react'
 import { Button } from '@/app/_components/ui/button'
 import ClientOnly from '@/app/_components/ClientOnly'
 import { useWallet } from "@solana/wallet-adapter-react"
 
-interface Resource {
+interface WrittenResource {
   id: string
   title: string
+  slug: string
   type: 'patent' | 'trademark' | 'copyright'
   description: string
   content: string
-  slug: string
   author: string
-  file_url?: string
-  created_by: string
-  created_at: string
   published: boolean
-  metadata: Record<string, any>
+  created_at: string
+  updated_at: string
+  category: string
+  reading_time?: number
 }
 
 export default function AdminResourcesPage() {
   const { publicKey } = useWallet()
-  const [resources, setResources] = useState<Resource[]>([])
+  const [resources, setResources] = useState<WrittenResource[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState<string | null>(null)
@@ -35,93 +35,65 @@ export default function AdminResourcesPage() {
     description: '',
     content: '',
     author: '',
-    published: true
+    published: true,
+    category: 'general',
+    reading_time: 5
   })
 
-  const supabase = createClient()
-
-  useEffect(() => {
-    if (publicKey) {
-      loadResources()
-    }
-  }, [publicKey])
-
-  async function loadResources() {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // First check if user is admin
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('wallet_address', publicKey?.toBase58())
-        .single()
-
-      if (profileError) {
-        throw new Error(`Profile error: ${profileError.message}`)
-      }
-
-      if (!profile?.is_admin) {
-        throw new Error('Unauthorized: Admin access required')
-      }
-
-      // Then fetch resources
-      const { data, error: fetchError } = await supabase
-        .from('educational_resources')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (fetchError) {
-        throw new Error(`Fetch error: ${fetchError.message}`)
-      }
-
-      setResources(data || [])
-    } catch (err) {
-      console.error('Error loading resources:', {
-        error: err,
-        wallet: publicKey?.toBase58(),
-        timestamp: new Date().toISOString()
-      })
-      setError(err instanceof Error ? err.message : 'Failed to load resources')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  const loadResources = useCallback(async () => {
     if (!publicKey) {
-      setError('Wallet not connected')
+      setLoading(false)
       return
     }
 
     try {
-      setError(null)
-      const walletAddress = publicKey.toBase58()
+      const supabase = createClient()
 
       // First verify admin status
       const { data: adminCheck, error: adminError } = await supabase
         .from('profiles')
         .select('is_admin')
-        .eq('wallet_address', walletAddress)
+        .eq('wallet_address', publicKey.toBase58())
         .single()
 
-      if (adminError) {
-        throw new Error(`Admin check failed: ${adminError.message}`)
-      }
-
-      if (!adminCheck?.is_admin) {
+      if (adminError || !adminCheck?.is_admin) {
         throw new Error('Admin access required')
       }
 
-      // Generate slug
+      // Then fetch resources
+      const { data, error } = await supabase
+        .from('written_resources')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setResources(data || [])
+    } catch (err) {
+      console.error('Error loading resources:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load resources')
+    } finally {
+      setLoading(false)
+    }
+  }, [publicKey])
+
+  useEffect(() => {
+    loadResources()
+  }, [loadResources])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!publicKey) return
+
+    try {
+      setError(null)
+      const walletAddress = publicKey.toBase58()
+
+      // Generate slug from title
       const slug = formData.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '')
 
-      // Prepare resource data
       const resourceData = {
         title: formData.title,
         type: formData.type,
@@ -129,77 +101,55 @@ export default function AdminResourcesPage() {
         content: formData.content,
         author: formData.author,
         published: formData.published,
-        slug,
-        created_by: walletAddress,
-        metadata: {},
-        created_at: new Date().toISOString()
+        category: formData.category,
+        reading_time: formData.reading_time,
+        updated_at: new Date().toISOString()
       }
 
-      // Set auth context
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        throw new Error(`Session error: ${sessionError.message}`)
-      }
+      const supabase = createClient()
 
-      if (!session) {
-        // Create anonymous session with wallet address
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: `${walletAddress}@temporary.com`,
-          password: walletAddress
-        })
-
-        if (signInError) {
-          throw new Error(`Auth error: ${signInError.message}`)
-        }
-      }
-
-      // Perform database operation
-      let dbOperation;
       if (isEditing && isEditing !== 'new') {
-        dbOperation = await supabase
-          .from('educational_resources')
-          .update({
-            ...resourceData,
-            updated_at: new Date().toISOString()
-          })
+        // Update existing resource
+        const { error: updateError } = await supabase
+          .from('written_resources')
+          .update(resourceData)
           .eq('id', isEditing)
           .select()
+
+        if (updateError) throw updateError
       } else {
-        dbOperation = await supabase
-          .from('educational_resources')
-          .insert([resourceData])
+        // Create new resource
+        const { error: insertError } = await supabase
+          .from('written_resources')
+          .insert([{
+            ...resourceData,
+            slug,
+            created_by: walletAddress,
+            created_at: new Date().toISOString()
+          }])
           .select()
+
+        if (insertError) throw insertError
       }
 
-      if (dbOperation.error) {
-        throw new Error(`Database error: ${dbOperation.error.message}`)
-      }
-
-      // Reset form and reload
+      // Reset form
       setFormData({
         title: '',
         type: 'patent',
         description: '',
         content: '',
         author: '',
-        published: true
+        published: true,
+        category: 'general',
+        reading_time: 5
       })
       setIsEditing(null)
+
+      // Reload resources
       await loadResources()
 
     } catch (err: any) {
-      console.error('Resource operation failed:', {
-        error: err,
-        message: err.message,
-        code: err.code,
-        details: err.details,
-        hint: err.hint,
-        operation: isEditing ? 'update' : 'insert',
-        wallet: publicKey.toBase58(),
-        timestamp: new Date().toISOString()
-      })
-      
+      console.error('Error saving resource:', err)
       setError(err.message || 'Failed to save resource')
     }
   }
@@ -244,7 +194,7 @@ export default function AdminResourcesPage() {
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:border-primary focus:ring-primary"
                   required
                 />
               </div>
@@ -268,7 +218,7 @@ export default function AdminResourcesPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:border-primary focus:ring-primary"
                   rows={3}
                   required
                 />
@@ -279,7 +229,7 @@ export default function AdminResourcesPage() {
                 <textarea
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:border-primary focus:ring-primary"
                   rows={10}
                   required
                 />
@@ -291,7 +241,7 @@ export default function AdminResourcesPage() {
                   type="text"
                   value={formData.author}
                   onChange={(e) => setFormData({ ...formData, author: e.target.value })}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 focus:border-primary focus:ring-primary"
                   required
                 />
               </div>
@@ -321,7 +271,9 @@ export default function AdminResourcesPage() {
                       description: '',
                       content: '',
                       author: '',
-                      published: true
+                      published: true,
+                      category: 'general',
+                      reading_time: 5
                     })
                   }}
                 >
@@ -371,7 +323,9 @@ export default function AdminResourcesPage() {
                             description: resource.description,
                             content: resource.content,
                             author: resource.author,
-                            published: resource.published
+                            published: resource.published,
+                            category: resource.category,
+                            reading_time: resource.reading_time
                           })
                         }}
                       >

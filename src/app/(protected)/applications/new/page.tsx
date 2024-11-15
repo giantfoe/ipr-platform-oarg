@@ -77,7 +77,7 @@ export default function NewApplicationPage() {
             name="title"
             id="title"
             required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
@@ -90,7 +90,7 @@ export default function NewApplicationPage() {
             id="description"
             rows={4}
             required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
@@ -102,7 +102,7 @@ export default function NewApplicationPage() {
             name="application_type"
             id="application_type"
             required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="">Select type</option>
             {APPLICATION_TYPES.map(type => (
@@ -131,7 +131,7 @@ export default function NewApplicationPage() {
                       setSelectedRegions(selectedRegions.filter(r => r !== region))
                     }
                   }}
-                  className="rounded border-gray-300 text-primary focus:ring-primary"
+                  className="rounded border-gray-300 text-primary focus:ring-primary bg-white"
                 />
                 <span className="text-sm text-gray-700">{region}</span>
               </label>

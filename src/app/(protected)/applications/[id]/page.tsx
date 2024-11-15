@@ -1,153 +1,78 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
+import { useWallet } from "@solana/wallet-adapter-react"
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { StatusBadge } from '@/app/_components/ui/StatusBadge'
-import { use } from 'react'
 
-interface Application {
+interface ApplicationDetail {
   id: string
   title: string
   description: string
   application_type: string
   status: string
+  regions: string[]
   created_at: string
   wallet_address: string
+  documents?: any[]
 }
 
-interface StatusHistory {
-  id: string
-  status: string
-  notes: string
-  created_at: string
-  created_by: string
-  profiles: {
-    full_name: string
-  }
+interface PageProps {
+  params: { id: string }
 }
 
-export default function ApplicationDetailPage({
-  params
-}: {
-  params: Promise<{ id: string }>
-}) {
-  // Properly unwrap the params using React.use()
-  const { id } = use(params)
-  const [application, setApplication] = useState<Application | null>(null)
-  const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([])
+export default function ApplicationDetailPage({ params }: PageProps) {
+  const { publicKey } = useWallet()
+  const [application, setApplication] = useState<ApplicationDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadApplication = useCallback(async () => {
-    if (!id) return
-
-    try {
-      const supabase = createClient()
-      
-      // Fetch application details
-      const { data: appData, error: appError } = await supabase
-        .from('ip_applications')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (appError) throw appError
-      setApplication(appData)
-
-      // Fetch status history
-      const { data: historyData, error: historyError } = await supabase
-        .from('status_history')
-        .select(`
-          *,
-          profiles (
-            full_name
-          )
-        `)
-        .eq('application_id', id)
-        .order('created_at', { ascending: false })
-
-      if (historyError) throw historyError
-      setStatusHistory(historyData || [])
-    } catch (err) {
-      console.error('Error loading application:', err)
-      setError('Failed to load application details')
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
-
   useEffect(() => {
-    let mounted = true
-    const supabase = createClient()
+    async function loadApplication() {
+      if (!publicKey || !params.id) {
+        setLoading(false)
+        return
+      }
 
-    // Load initial data
-    loadApplication()
+      try {
+        const supabase = createClient()
+        const { data, error: fetchError } = await supabase
+          .from('ip_applications')
+          .select(`
+            id,
+            title,
+            description,
+            application_type,
+            status,
+            regions,
+            created_at,
+            wallet_address,
+            documents
+          `)
+          .eq('id', params.id)
+          .single()
 
-    // Set up real-time subscriptions
-    const applicationChannel = supabase
-      .channel(`application-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ip_applications',
-          filter: `id=eq.${id}`
-        },
-        async (payload) => {
-          if (!mounted) return
-          console.log('Application update received:', payload)
-          
-          if (payload.eventType === 'UPDATE') {
-            setApplication((prev) => ({
-              ...prev,
-              ...payload.new,
-            } as Application))
-          }
+        if (fetchError) throw fetchError
+
+        // Verify ownership
+        if (data.wallet_address !== publicKey.toBase58()) {
+          throw new Error('Unauthorized')
         }
-      )
-      .subscribe()
 
-    const historyChannel = supabase
-      .channel(`history-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'status_history',
-          filter: `application_id=eq.${id}`
-        },
-        async (payload) => {
-          if (!mounted) return
-          console.log('Status history update received:', payload)
-
-          const { data } = await supabase
-            .from('status_history')
-            .select(`
-              *,
-              profiles (
-                full_name
-              )
-            `)
-            .eq('id', payload.new.id)
-            .single()
-
-          if (data && mounted) {
-            setStatusHistory(prev => [data, ...prev])
-          }
-        }
-      )
-      .subscribe()
-
-    // Cleanup function
-    return () => {
-      mounted = false
-      applicationChannel.unsubscribe()
-      historyChannel.unsubscribe()
+        setApplication(data)
+      } catch (err) {
+        console.error('Error loading application:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load application')
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [id, loadApplication])
+
+    loadApplication()
+  }, [publicKey, params.id])
 
   if (loading) {
     return (
@@ -159,9 +84,12 @@ export default function ApplicationDetailPage({
 
   if (error || !application) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="bg-red-50 text-red-700 p-4 rounded-md">
-          {error || 'Application not found'}
+          <p>{error || 'Application not found'}</p>
+          <Link href="/applications" className="mt-4 inline-block text-sm underline">
+            Return to Applications
+          </Link>
         </div>
       </div>
     )
@@ -169,38 +97,43 @@ export default function ApplicationDetailPage({
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <h1 className="text-2xl font-bold mb-4">{application.title}</h1>
-        <div className="flex items-center gap-2 mb-6">
-          <span className="text-sm font-medium">Status:</span>
-          <StatusBadge status={application.status as any} />
-        </div>
-        <div className="prose prose-sm max-w-none">
-          <p>{application.description}</p>
-        </div>
-      </div>
+      <Link href="/applications" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Applications
+      </Link>
 
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-4">Status History</h2>
-        <div className="space-y-4">
-          {statusHistory.map((history) => (
-            <div key={history.id} className="flex items-center justify-between py-2 border-b">
-              <div>
-                <p className="text-sm font-medium">
-                  Status changed to: <span className="font-semibold">{history.status}</span>
-                </p>
-                <p className="text-sm text-gray-500">
-                  By {history.profiles.full_name}
-                </p>
-                {history.notes && (
-                  <p className="text-sm text-gray-600 mt-1">{history.notes}</p>
-                )}
-              </div>
-              <span className="text-sm text-gray-500">
-                {new Date(history.created_at).toLocaleDateString()}
-              </span>
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{application.title}</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Submitted on {new Date(application.created_at).toLocaleDateString()}
+            </p>
+          </div>
+          <StatusBadge status={application.status} />
+        </div>
+
+        <div className="border-t border-gray-200 pt-6">
+          <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Application Type</dt>
+              <dd className="mt-1 text-sm text-gray-900 capitalize">{application.application_type}</dd>
             </div>
-          ))}
+
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Regions</dt>
+              <dd className="mt-1 text-sm text-gray-900">
+                {application.regions?.join(', ') || 'No regions specified'}
+              </dd>
+            </div>
+
+            <div className="sm:col-span-2">
+              <dt className="text-sm font-medium text-gray-500">Description</dt>
+              <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                {application.description}
+              </dd>
+            </div>
+          </dl>
         </div>
       </div>
     </div>
