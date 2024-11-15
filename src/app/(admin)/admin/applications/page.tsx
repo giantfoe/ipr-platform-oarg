@@ -9,9 +9,18 @@ import { useWallet } from "@solana/wallet-adapter-react"
 import ClientOnly from '@/app/_components/ClientOnly'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/lib/hooks/use-toast'
+
 type ApplicationStatus = 'draft' | 'pending' | 'in-review' | 'approved' | 'rejected'
 type Application = /* unresolved */ any
 type StatusUpdatePayload = /* unresolved */ any
+type Toast = {
+  title: string;
+  description: string;
+}
+interface ExtendedToast extends Toast {
+  variant?: "default" | "destructive" | "success"| "loading";
+}
+
 
 
 export default function AdminApplicationsPage() {
@@ -41,7 +50,7 @@ export default function AdminApplicationsPage() {
       toast({
         title: "Error",
         description: "Failed to load applications",
-        variant: "destructive"
+        // variant: "destructive"
       })
     } finally {
       setLoading(false)
@@ -83,7 +92,7 @@ export default function AdminApplicationsPage() {
         toast({
           title: "Error",
           description: "Failed to update application status",
-          variant: "destructive"
+          // variant: "destructive"
         })
         throw error
       }
@@ -154,12 +163,12 @@ export default function AdminApplicationsPage() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center gap-2">
-                      <select
-                        value={app.status}
-                        onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                        disabled={updating === app.id}
-                        className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-[#635BFF] focus:outline-none focus:ring-[#635BFF] sm:text-sm disabled:opacity-50 bg-white text-gray-900"
-                      >
+                    <select
+  value={app.status}
+  onChange={(e) => handleStatusChange(app.id, e.target.value as ApplicationStatus)}
+  disabled={updating === app.id}
+  className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-[#635BFF] focus:outline-none focus:ring-[#635BFF] sm:text-sm disabled:opacity-50 bg-white text-gray-900"
+>
                         <option value="draft">Draft</option>
                         <option value="pending">Pending</option>
                         <option value="in-review">In Review</option>
