@@ -8,11 +8,16 @@ import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 import { useWallet } from "@solana/wallet-adapter-react"
 import ClientOnly from '@/app/_components/ClientOnly'
 import { useRouter } from 'next/navigation'
+import { toast } from '@/lib/hooks/use-toast'
+type ApplicationStatus = 'draft' | 'pending' | 'in-review' | 'approved' | 'rejected'
+type Application = /* unresolved */ any
+type StatusUpdatePayload = /* unresolved */ any
+
 
 export default function AdminApplicationsPage() {
   const { publicKey } = useWallet()
   const router = useRouter()
-  const [applications, setApplications] = useState([])
+  const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
 
@@ -30,15 +35,20 @@ export default function AdminApplicationsPage() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setApplications(data || [])
+      setApplications((data as Application[]) || [])
     } catch (error) {
       console.error('Error loading applications:', error)
+      toast({
+        title: "Error",
+        description: "Failed to load applications",
+        variant: "destructive"
+      })
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useRealtimeStatus(useCallback((payload) => {
+  useRealtimeStatus(useCallback((payload: StatusUpdatePayload) => {
     if (payload.eventType === 'UPDATE') {
       setApplications(prev => 
         prev.map(app => 
@@ -54,14 +64,14 @@ export default function AdminApplicationsPage() {
     loadApplications()
   }, [loadApplications])
 
-  const handleStatusChange = async (applicationId: string, newStatus: string) => {
+  const handleStatusChange = async (applicationId: string, newStatus: ApplicationStatus) => {
     if (!publicKey) return
     setUpdating(applicationId)
 
     const supabase = createClient()
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .rpc('handle_application_status_update', {
           p_application_id: applicationId,
           p_new_status: newStatus,
@@ -70,6 +80,11 @@ export default function AdminApplicationsPage() {
 
       if (error) {
         console.error('Status update failed:', error)
+        toast({
+          title: "Error",
+          description: "Failed to update application status",
+          variant: "destructive"
+        })
         throw error
       }
 
@@ -81,7 +96,6 @@ export default function AdminApplicationsPage() {
             : app
         )
       )
-
     } catch (error) {
       console.error('Error updating status:', error)
     } finally {
@@ -137,7 +151,7 @@ export default function AdminApplicationsPage() {
                   </td>
                   <td 
                     className="px-6 py-4 whitespace-nowrap"
-                    onClick={(e) => e.stopPropagation()} // Prevent row click when interacting with select
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center gap-2">
                       <select
