@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/app/_providers/ThemeProvider'
 import { Toaster } from '@/components/ui/toaster'
 import { NavbarWrapper } from './_components/layout/NavbarWrapper'
 import { AdminDetector } from './_components/AdminDetector'
-import ClientOnly from './_components/ClientOnly'
+import ClientOnly from '@/app/_components/ClientOnly'
 import "./globals.css"
 
 export const metadata: Metadata = {

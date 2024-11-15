@@ -1,29 +1,40 @@
 'use client'
 
+import { useState } from 'react'
 import { useWallet } from "@solana/wallet-adapter-react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { useRouter } from 'next/navigation'
+import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 
 const APPLICATION_TYPES = [
   { id: 'patent', name: 'Patent' },
   { id: 'trademark', name: 'Trademark' },
-  { id: 'copyright', name: 'Copyright' },
+  { id: 'copyright', name: 'Copyright' }
 ]
 
-const REGIONS = [
-  'Botswana', 'Eswatini', 'Gambia', 'Ghana', 'Kenya', 'Lesotho', 
-  'Malawi', 'Mozambique', 'Namibia', 'Rwanda', 'Sierra Leone', 
-  'Somalia', 'Sudan', 'Tanzania', 'Uganda', 'Zambia', 'Zimbabwe',
-  'Other'
-]
+interface ApplicationFormData {
+  title: string
+  description: string
+  application_type: string
+  applicant_name: string
+  company_name: string
+  national_id: string
+  phone_number: string
+}
 
 export default function NewApplicationPage() {
   const { publicKey } = useWallet()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedRegions, setSelectedRegions] = useState<string[]>([])
+  const [formData, setFormData] = useState<ApplicationFormData>({
+    title: '',
+    description: '',
+    application_type: '',
+    applicant_name: '',
+    company_name: '',
+    national_id: '',
+    phone_number: ''
+  })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -32,8 +43,6 @@ export default function NewApplicationPage() {
     setLoading(true)
     setError(null)
 
-    const formData = new FormData(e.currentTarget)
-    
     try {
       const response = await fetch('/api/ip-applications', {
         method: 'POST',
@@ -42,10 +51,8 @@ export default function NewApplicationPage() {
           'x-wallet-address': publicKey.toBase58()
         },
         body: JSON.stringify({
-          title: formData.get('title'),
-          description: formData.get('description'),
-          application_type: formData.get('application_type'),
-          region: selectedRegions
+          ...formData,
+          regions: ['Sierra Leone'] // Default to Sierra Leone
         })
       })
 
@@ -68,74 +75,120 @@ export default function NewApplicationPage() {
       <h1 className="text-2xl font-bold mb-6">New IP Application</h1>
       
       <form onSubmit={handleSubmit} className="space-y-6 bg-white shadow rounded-lg p-6">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-            Title/Name of IP
-          </label>
-          <input
-            type="text"
-            name="title"
-            id="title"
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            name="description"
-            id="description"
-            rows={4}
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="application_type" className="block text-sm font-medium text-gray-700">
-            Application Type
-          </label>
-          <select
-            name="application_type"
-            id="application_type"
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="">Select type</option>
-            {APPLICATION_TYPES.map(type => (
-              <option key={type.id} value={type.id}>
-                {type.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Region Selection
-          </label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {REGIONS.map(region => (
-              <label key={region} className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  value={region}
-                  checked={selectedRegions.includes(region)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedRegions([...selectedRegions, region])
-                    } else {
-                      setSelectedRegions(selectedRegions.filter(r => r !== region))
-                    }
-                  }}
-                  className="rounded border-gray-300 text-primary focus:ring-primary bg-white"
-                />
-                <span className="text-sm text-gray-700">{region}</span>
+        {/* Applicant Information Section */}
+        <div className="border-b border-gray-200 pb-6">
+          <h2 className="text-lg font-medium mb-4">Applicant Information</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="applicant_name" className="block text-sm font-medium text-gray-700 required">
+                Full Name
               </label>
-            ))}
+              <input
+                type="text"
+                id="applicant_name"
+                value={formData.applicant_name}
+                onChange={(e) => setFormData({ ...formData, applicant_name: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="company_name" className="block text-sm font-medium text-gray-700 required">
+                Company Name
+              </label>
+              <input
+                type="text"
+                id="company_name"
+                value={formData.company_name}
+                onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="national_id" className="block text-sm font-medium text-gray-700 required">
+                National ID Number
+              </label>
+              <input
+                type="text"
+                id="national_id"
+                value={formData.national_id}
+                onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="phone_number" className="block text-sm font-medium text-gray-700 required">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                id="phone_number"
+                value={formData.phone_number}
+                onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                required
+                placeholder="+232..."
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* IP Application Details Section */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium mb-4">IP Details</h2>
+
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 required">
+              Title/Name of IP
+            </label>
+            <input
+              type="text"
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700 required">
+              Description
+            </label>
+            <textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={4}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="application_type" className="block text-sm font-medium text-gray-700 required">
+              Application Type
+            </label>
+            <select
+              id="application_type"
+              value={formData.application_type}
+              onChange={(e) => setFormData({ ...formData, application_type: e.target.value })}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-white text-gray-900 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              required
+            >
+              <option value="">Select type</option>
+              {APPLICATION_TYPES.map(type => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -155,12 +208,12 @@ export default function NewApplicationPage() {
           </button>
           <button
             type="submit"
-            disabled={loading || !publicKey || selectedRegions.length === 0}
+            disabled={loading || !publicKey}
             className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? (
               <span className="flex items-center">
-                <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                <LoadingSpinner size="sm" className="-ml-1 mr-2" />
                 Creating...
               </span>
             ) : (

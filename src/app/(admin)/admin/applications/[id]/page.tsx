@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useWallet, useConnection } from "@solana/wallet-adapter-react"
 import Link from 'next/link'
 import { ArrowLeft, Clock } from 'lucide-react'
 import { StatusBadge } from '@/app/_components/ui/StatusBadge'
 import { Button } from '@/app/_components/ui/button'
 import ClientOnly from '@/app/_components/ClientOnly'
+import { handleApplicationApproval } from '@/services/nft/statusHandler'
 
 interface ApplicationDetail {
   id: string
@@ -20,6 +21,10 @@ interface ApplicationDetail {
   created_at: string
   updated_at: string
   wallet_address: string
+  applicant_name: string
+  company_name: string
+  national_id: string
+  phone_number: string
   documents?: any[]
   profiles?: {
     full_name: string
@@ -40,7 +45,7 @@ interface PageProps {
 }
 
 export default function AdminApplicationDetailPage({ params }: PageProps) {
-  const { publicKey } = useWallet()
+  const { publicKey, connection } = useWallet()
   const [application, setApplication] = useState<ApplicationDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -116,6 +121,11 @@ export default function AdminApplicationDetailPage({ params }: PageProps) {
         .eq('id', application.id)
 
       if (updateError) throw updateError
+
+      // If status is approved, trigger NFT minting
+      if (newStatus === 'approved') {
+        await handleApplicationApproval(application.id, connection)
+      }
 
       // Add status history entry
       const { error: historyError } = await supabase
@@ -208,40 +218,56 @@ export default function AdminApplicationDetailPage({ params }: PageProps) {
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                <dd className="mt-1 text-sm text-gray-900">{application.profiles?.full_name}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {application.applicant_name}
+                </dd>
               </div>
+
               <div>
                 <dt className="text-sm font-medium text-gray-500">Company</dt>
-                <dd className="mt-1 text-sm text-gray-900">{application.profiles?.company_name || 'N/A'}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {application.company_name}
+                </dd>
               </div>
+
+              <div>
+                <dt className="text-sm font-medium text-gray-500">National ID</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {application.national_id}
+                </dd>
+              </div>
+
               <div>
                 <dt className="text-sm font-medium text-gray-500">Phone</dt>
-                <dd className="mt-1 text-sm text-gray-900">{application.profiles?.phone_number || 'N/A'}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {application.phone_number}
+                </dd>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">{application.profiles?.email || 'N/A'}</dd>
-              </div>
-              <div>
+
+              <div className="sm:col-span-2">
                 <dt className="text-sm font-medium text-gray-500">Wallet Address</dt>
-                <dd className="mt-1 text-sm text-gray-900 font-mono">{application.wallet_address}</dd>
+                <dd className="mt-1 text-sm font-mono text-gray-900">
+                  {application.wallet_address}
+                </dd>
               </div>
             </dl>
           </div>
 
           {/* Application Details */}
-          <div className="border-t border-gray-200 pt-6 mb-6">
+          <div className="border-t border-gray-200 pt-6">
             <h2 className="text-lg font-medium mb-4">Application Details</h2>
             <dl className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Application Type</dt>
-                <dd className="mt-1 text-sm text-gray-900 capitalize">{application.application_type}</dd>
+                <dd className="mt-1 text-sm text-gray-900 capitalize">
+                  {application.application_type}
+                </dd>
               </div>
 
               <div>
-                <dt className="text-sm font-medium text-gray-500">Regions</dt>
+                <dt className="text-sm font-medium text-gray-500">Region</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {application.regions?.join(', ') || 'No regions specified'}
+                  Sierra Leone
                 </dd>
               </div>
 
