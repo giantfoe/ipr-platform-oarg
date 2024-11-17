@@ -69,10 +69,6 @@ export default function AdminApplicationsPage() {
     }
   }, []))
 
-  useEffect(() => {
-    loadApplications()
-  }, [loadApplications])
-
   const handleStatusChange = async (applicationId: string, newStatus: ApplicationStatus) => {
     if (!publicKey) return
     setUpdating(applicationId)
@@ -112,15 +108,8 @@ export default function AdminApplicationsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  return (
+  // Render page structure immediately
+  const pageContent = (
     <ClientOnly>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -128,42 +117,54 @@ export default function AdminApplicationsPage() {
         </div>
 
         <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applicant</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {applications.map((app) => (
-                <tr 
-                  key={app.id}
-                  onClick={() => router.push(`/admin/applications/${app.id}`)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">{app.title}</div>
-                    <div className="text-sm text-gray-500">{app.description}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{app.profiles?.full_name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 capitalize">{app.application_type}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={app.status} />
-                  </td>
-                  <td 
-                    className="px-6 py-4 whitespace-nowrap"
-                    onClick={(e) => e.stopPropagation()}
+          {loading ? (
+            // Skeleton loader
+            <div className="animate-pulse">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="border-b border-gray-200 p-6 space-y-3">
+                  <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            // Actual content
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applicant</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {applications.map((app) => (
+                  <tr 
+                    key={app.id}
+                    onClick={() => router.push(`/admin/applications/${app.id}`)}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <div className="flex items-center gap-2">
-                    <select
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{app.title}</div>
+                      <div className="text-sm text-gray-500">{app.description}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{app.profiles?.full_name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 capitalize">{app.application_type}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <StatusBadge status={app.status} />
+                    </td>
+                    <td 
+                      className="px-6 py-4 whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center gap-2">
+                      <select
   value={app.status}
   onChange={(e) => handleStatusChange(app.id, e.target.value as ApplicationStatus)}
   disabled={updating === app.id}
@@ -184,8 +185,16 @@ export default function AdminApplicationsPage() {
               ))}
             </tbody>
           </table>
+          )}
         </div>
       </div>
     </ClientOnly>
   )
+
+  // Load data after mount
+  useEffect(() => {
+    loadApplications()
+  }, [loadApplications])
+
+  return pageContent
 } 

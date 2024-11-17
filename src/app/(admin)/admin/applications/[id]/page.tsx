@@ -112,35 +112,19 @@ export default function AdminApplicationDetailPage({ params }: PageProps) {
 
     try {
       const supabase = createClient()
-      const { error: updateError } = await supabase
-        .from('ip_applications')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', application.id)
 
-      if (updateError) throw updateError
-
-      // If status is approved, trigger NFT minting
-      if (newStatus === 'approved') {
-        await handleApplicationApproval(application.id, connection)
-      }
-
-      // Add status history entry
-      const { error: historyError } = await supabase
-        .from('status_history')
-        .insert({
-          application_id: application.id,
-          status: newStatus,
-          notes: statusNote,
-          created_by: publicKey.toBase58()
+      // Call the RPC function to handle status update
+      const { error: rpcError } = await supabase
+        .rpc('handle_application_status_update', {
+          p_application_id: application.id,
+          p_new_status: newStatus,
+          p_admin_wallet: publicKey.toBase58()
         })
 
-      if (historyError) throw historyError
+      if (rpcError) throw rpcError
 
-      // Reload application
-      const { data, error: fetchError } = await supabase
+      // Reload application data
+      const { data: updatedApp, error: fetchError } = await supabase
         .from('ip_applications')
         .select(`
           *,
@@ -157,12 +141,13 @@ export default function AdminApplicationDetailPage({ params }: PageProps) {
             created_by
           )
         `)
-        .eq('id', application.id)
+        .eq('id', params.id)
         .single()
 
       if (fetchError) throw fetchError
-      setApplication(data)
+      setApplication(updatedApp)
       setStatusNote('')
+
     } catch (err) {
       console.error('Error updating status:', err)
       setError(err instanceof Error ? err.message : 'Failed to update status')
