@@ -1,42 +1,76 @@
 'use client'
 
-import Link from 'next/link'
-import { WalletButton } from "../WalletButton"
 import { useWallet } from "@solana/wallet-adapter-react"
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
+import Link from "next/link"
+import { useEffect, useState } from "react"
+import { createClient } from "@/utils/supabase/client"
 
 export default function Navbar() {
-  const { connected } = useWallet()
+  const { publicKey } = useWallet()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    async function checkAdminStatus() {
+      if (!publicKey) {
+        setIsAdmin(false)
+        return
+      }
+
+      try {
+        console.log('Checking admin status for:', publicKey.toBase58())
+        const supabase = createClient()
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('wallet_address', publicKey.toBase58())
+          .single()
+
+        if (error) {
+          console.error('Error checking admin status:', error)
+          throw error
+        }
+
+        console.log('Admin check result:', data)
+        setIsAdmin(data?.is_admin || false)
+      } catch (err) {
+        console.error('Error checking admin status:', err)
+        setIsAdmin(false)
+      }
+    }
+
+    checkAdminStatus()
+  }, [publicKey])
 
   return (
-    <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b z-50">
+    <nav className="bg-white shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center">
-            <span className="text-xl font-semibold">IPR Platform</span>
-          </Link>
-          
-          <div className="hidden sm:flex items-center space-x-8">
-            <Link 
-              href="/about" 
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {/* About */}
-            </Link>
-            <Link 
-              href="/pricing" 
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {/* Pricing */}
-            </Link>
-            {connected && (
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-primary-foreground bg-primary px-4 py-2 rounded-md hover:bg-primary/90"
-              >
-                Dashboard
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/" className="text-xl font-bold text-gray-800">
+                IPR Platform
               </Link>
-            )}
-            <WalletButton />
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <Link
+                href="/applications"
+                className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900"
+              >
+                My Applications
+              </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin/applications"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900"
+                >
+                  Admin Panel
+                </Link>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center">
+            <WalletMultiButton />
           </div>
         </div>
       </div>
