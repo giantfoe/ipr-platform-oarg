@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 import { StatusBadge } from '@/app/_components/ui/StatusBadge'
+import { useToast } from '@/components/ui/use-toast'
 
 type ApplicationStatus = 'draft' | 'pending' | 'in-review' | 'approved' | 'rejected'
 
@@ -37,6 +38,7 @@ export default function AdminApplicationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     async function loadApplications() {
@@ -80,12 +82,16 @@ export default function AdminApplicationsPage() {
     loadApplications()
   }, [publicKey])
 
-  const handleStatusChange = async (applicationId: string, newStatus: ApplicationStatus) => {
+  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>, applicationId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const newStatus = e.target.value as ApplicationStatus
     setUpdating(applicationId)
+    const supabase = createBrowserSupabaseClient()
+    
     try {
-      const supabase = createBrowserSupabaseClient()
-
-      // First update the application status
+      // Update application status
       const { error: updateError } = await supabase
         .from('ip_applications')
         .update({ 
@@ -96,7 +102,7 @@ export default function AdminApplicationsPage() {
 
       if (updateError) throw updateError
 
-      // Then create a status history entry
+      // Create status history entry
       const { error: historyError } = await supabase
         .from('status_history')
         .insert({
@@ -109,14 +115,26 @@ export default function AdminApplicationsPage() {
       if (historyError) throw historyError
 
       // Refresh the applications list
-      const { data } = await supabase
+      const { data: refreshedData, error: refreshError } = await supabase
         .from('ip_applications')
         .select('*')
         .order('created_at', { ascending: false })
 
-      setApplications(data || [])
+      if (refreshError) throw refreshError
+      
+      setApplications(refreshedData || [])
+
+      toast({
+        title: 'Status Updated',
+        description: `Application status changed to ${newStatus}`
+      })
     } catch (err) {
       console.error('Error updating status:', err)
+      toast({
+        title: 'Error',
+        description: 'Failed to update status. Please try again.',
+        variant: 'destructive'
+      })
     } finally {
       setUpdating(null)
     }
@@ -172,27 +190,26 @@ export default function AdminApplicationsPage() {
               {applications.map((app) => (
                 <tr 
                   key={app.id}
-                  onClick={() => router.push(`/admin/applications/${app.id}`)}
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
                 >
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4" onClick={() => router.push(`/admin/applications/${app.id}`)}>
                     <div className="text-sm font-medium text-gray-900">{app.title}</div>
                     <div className="text-sm text-gray-500">{app.description}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap" onClick={() => router.push(`/admin/applications/${app.id}`)}>
                     <div className="text-sm text-gray-900">{app.applicant_name}</div>
                     <div className="text-sm text-gray-500">{app.company_name}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap" onClick={() => router.push(`/admin/applications/${app.id}`)}>
                     <div className="text-sm text-gray-900 capitalize">{app.application_type}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={app.status} />
+                  <td className="px-6 py-4 whitespace-nowrap" onClick={() => router.push(`/admin/applications/${app.id}`)}>
+                    <StatusBadge applicationId={app.id} initialStatus={app.status} />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <select
                       value={app.status}
-                      onChange={(e) => handleStatusChange(app.id, e.target.value as ApplicationStatus)}
+                      onChange={(e) => handleStatusChange(e, app.id)}
                       disabled={updating === app.id}
                       className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-primary focus:outline-none focus:ring-primary sm:text-sm disabled:opacity-50 bg-white text-gray-900"
                     >
@@ -203,7 +220,9 @@ export default function AdminApplicationsPage() {
                       <option value="rejected">Rejected</option>
                     </select>
                     {updating === app.id && (
-                      <LoadingSpinner size="sm" />
+                      <div className="mt-2 flex justify-center">
+                        <LoadingSpinner size="sm" />
+                      </div>
                     )}
                   </td>
                 </tr>
