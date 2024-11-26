@@ -1,89 +1,74 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
-import { Plus } from 'lucide-react'
-import Link from 'next/link'
-import { StatusBadge } from '@/app/_components/ui/StatusBadge'
-import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
-import { useRouter } from 'next/navigation'
 import { useWallet } from "@solana/wallet-adapter-react"
+import { useRouter } from 'next/navigation'
+import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
+import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
+import { StatusBadge } from '@/app/_components/ui/StatusBadge'
 
 interface Application {
   id: string
   title: string
   description: string
-  application_type: 'patent' | 'trademark' | 'copyright'
-  status: 'draft' | 'pending' | 'in-review' | 'approved' | 'rejected'
+  application_type: string
+  status: string
   created_at: string
 }
 
 export default function ApplicationsPage() {
   const { publicKey } = useWallet()
+  const router = useRouter()
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    let mounted = true
-    const supabase = createClient()
-
     async function loadApplications() {
       if (!publicKey) return
-
+      
       try {
+        console.log('Loading user applications...')
+        const supabase = createBrowserSupabaseClient()
+        
         const { data, error } = await supabase
           .from('ip_applications')
-          .select('*')
+          .select(`
+            *,
+            status_history (
+              status,
+              created_at,
+              notes
+            )
+          `)
           .eq('wallet_address', publicKey.toBase58())
           .order('created_at', { ascending: false })
 
-        if (error) throw error
-        if (mounted) {
-          setApplications(data || [])
-          setLoading(false)
+        if (error) {
+          console.error('Error fetching applications:', error)
+          throw error
         }
-      } catch (error) {
-        console.error('Error loading applications:', error)
-        if (mounted) setLoading(false)
+
+        console.log('Applications found:', data?.length)
+        setApplications(data || [])
+      } catch (err) {
+        console.error('Error loading applications:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load applications')
+      } finally {
+        setLoading(false)
       }
     }
 
-    // Initial load
     loadApplications()
-
-    // Set up real-time subscription for status updates
-    const subscription = supabase
-      .channel('application-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'ip_applications',
-          filter: `wallet_address=eq.${publicKey?.toBase58()}`
-        },
-        (payload) => {
-          console.log('Received update:', payload)
-          if (mounted) {
-            setApplications(prevApps => 
-              prevApps.map(app => 
-                app.id === payload.new.id 
-                  ? { ...app, ...payload.new }
-                  : app
-              )
-            )
-          }
-        }
-      )
-      .subscribe()
-
-    // Cleanup
-    return () => {
-      mounted = false
-      subscription.unsubscribe()
-    }
   }, [publicKey])
+
+  if (!publicKey) {
+    return (
+      <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
+        Please connect your wallet to view your applications.
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -93,74 +78,69 @@ export default function ApplicationsPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 text-red-700 rounded-md">
+        {error}
+      </div>
+    )
+  }
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">My Applications</h1>
-        <Link
-          href="/applications/new"
-          className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+        <button
+          onClick={() => router.push('/applications/new')}
+          className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
         >
-          <Plus className="h-5 w-5 mr-2" />
           New Application
-        </Link>
+        </button>
       </div>
 
-      {applications.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">No applications yet</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Get started by creating a new IP application.
-          </p>
-          <div className="mt-6">
-            <Link
-              href="/applications/new"
-              className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              New Application
-            </Link>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        {applications.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            No applications found. Create your first application to get started.
           </div>
-        </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {applications.map((app) => (
-              <li 
-                key={app.id}
-                onClick={() => router.push(`/applications/${app.id}`)}
-                className="hover:bg-gray-50 cursor-pointer"
-              >
-                <div className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-medium text-gray-900 truncate">
-                        {app.title}
-                      </h3>
-                      <div className="mt-2 flex items-center gap-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-                          {app.application_type}
-                        </span>
-                        <StatusBadge status={app.status} />
-                      </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {applications.map((app) => (
+                <tr 
+                  key={app.id}
+                  onClick={() => router.push(`/applications/${app.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-medium text-gray-900">{app.title}</div>
+                    <div className="text-sm text-gray-500">{app.description}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 capitalize">{app.application_type}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <StatusBadge applicationId={app.id} initialStatus={app.status} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {new Date(app.created_at).toLocaleDateString()}
                     </div>
-                    <div className="ml-4 flex-shrink-0">
-                      <p className="text-sm text-gray-500">
-                        {new Date(app.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500 line-clamp-2">
-                      {app.description}
-                    </p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   )
 } 
