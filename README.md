@@ -1,18 +1,17 @@
-# IPR Platform
+# IP Registration Platform
 
-A blockchain-powered Intellectual Property Rights management platform built with Next.js, Supabase, and Solana.
+A modern intellectual property registration platform built for Sierra Leone.
 
 ## Prerequisites
 
 - Node.js 18+ 
-- pnpm (recommended) or npm
-- Supabase account
-- Solana wallet (Phantom recommended)
-- Git
+- PostgreSQL 14+
+- Supabase Account
+- Solana Wallet (Phantom recommended)
 
 ## Environment Setup
 
-Create a `.env.local` file in the root directory:
+1. Create a `.env.local` file in the root directory:
 
 ```
 

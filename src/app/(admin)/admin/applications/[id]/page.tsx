@@ -73,8 +73,8 @@ export default function AdminApplicationDetailPage({ params }: PageProps) {
           throw new Error('Admin access required')
         }
 
-        const { data, error: fetchError } = await supabase
-          .from('ip_applications')
+        const { data: application, error } = await supabase
+          .from('ip_applications_new')
           .select(`
             *,
             profiles (
@@ -82,19 +82,13 @@ export default function AdminApplicationDetailPage({ params }: PageProps) {
               company_name,
               phone_number,
               email
-            ),
-            status_history (
-              status,
-              notes,
-              created_at,
-              created_by
             )
           `)
           .eq('id', params.id)
           .single()
 
-        if (fetchError) throw fetchError
-        setApplication(data)
+        if (error) throw error
+        setApplication(application)
       } catch (err) {
         console.error('Error loading application:', err)
         setError(err instanceof Error ? err.message : 'Failed to load application')
@@ -125,7 +119,7 @@ export default function AdminApplicationDetailPage({ params }: PageProps) {
 
       // Reload application data
       const { data: updatedApp, error: fetchError } = await supabase
-        .from('ip_applications')
+        .from('ip_applications_new')
         .select(`
           *,
           profiles (
@@ -133,12 +127,6 @@ export default function AdminApplicationDetailPage({ params }: PageProps) {
             company_name,
             phone_number,
             email
-          ),
-          status_history (
-            status,
-            notes,
-            created_at,
-            created_by
           )
         `)
         .eq('id', params.id)
