@@ -5,6 +5,8 @@ import { useDropzone } from 'react-dropzone'
 import { createClient } from '@/utils/supabase/client'
 import { LoadingSpinner } from './LoadingSpinner'
 import { cn } from '@/lib/utils'
+import { useToast } from "@/components/ui/use-toast"
+import { useWallet } from "@solana/wallet-adapter-react"
 
 interface FileUploadProps {
   applicationId: string
@@ -24,21 +26,35 @@ export function FileUpload({
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
   }
 }: FileUploadProps) {
+  const { publicKey } = useWallet()
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (!publicKey) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet to upload files",
+        variant: "destructive"
+      })
+      return
+    }
+
     setUploading(true)
     setError(null)
     const uploadedUrls: string[] = []
 
     try {
       const supabase = createClient()
+      const walletAddress = publicKey.toBase58()
 
       for (const file of acceptedFiles) {
+        // Create a folder structure using wallet address and application ID
         const fileExt = file.name.split('.').pop()
-        const fileName = `${applicationId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+        const fileName = `${walletAddress}/${applicationId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
+        // Upload file
         const { error: uploadError, data } = await supabase
           .storage
           .from('application-documents')
@@ -47,45 +63,63 @@ export function FileUpload({
             upsert: false
           })
 
-        if (uploadError) throw uploadError
+        if (uploadError) {
+          console.error('Upload error:', uploadError)
+          throw new Error(`Failed to upload ${file.name}`)
+        }
 
         if (data) {
+          // Get public URL
           const { data: { publicUrl } } = supabase
             .storage
             .from('application-documents')
             .getPublicUrl(fileName)
 
-          uploadedUrls.push(publicUrl)
-
-          // Add to documents table
-          await supabase
+          // Create document record
+          const { error: docError } = await supabase
             .from('documents')
             .insert({
               application_id: applicationId,
               file_path: fileName,
-              file_type: file.type,
               file_name: file.name,
+              file_type: file.type,
               file_size: file.size,
               mime_type: file.type,
               public_url: publicUrl
             })
+
+          if (docError) {
+            console.error('Document record error:', docError)
+            throw new Error(`Failed to record document ${file.name}`)
+          }
+
+          uploadedUrls.push(publicUrl)
         }
       }
 
       onUploadComplete(uploadedUrls)
+      toast({
+        title: 'Success',
+        description: `Successfully uploaded ${acceptedFiles.length} file(s)`,
+      })
     } catch (err) {
       console.error('Upload error:', err)
-      setError('Failed to upload files. Please try again.')
+      setError(err instanceof Error ? err.message : 'Failed to upload files')
+      toast({
+        title: 'Error',
+        description: 'Failed to upload files. Please try again.',
+        variant: 'destructive'
+      })
     } finally {
       setUploading(false)
     }
-  }, [applicationId, onUploadComplete])
+  }, [applicationId, publicKey, onUploadComplete])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles,
     accept: acceptedFileTypes,
-    disabled: uploading
+    disabled: uploading || !publicKey
   })
 
   return (
@@ -95,7 +129,7 @@ export function FileUpload({
         className={cn(
           "border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
           isDragActive ? "border-primary bg-primary/5" : "border-gray-300 hover:border-primary",
-          uploading && "opacity-50 cursor-not-allowed"
+          (uploading || !publicKey) && "opacity-50 cursor-not-allowed"
         )}
       >
         <input {...getInputProps()} />
@@ -104,6 +138,10 @@ export function FileUpload({
             <LoadingSpinner size="sm" />
             <span>Uploading...</span>
           </div>
+        ) : !publicKey ? (
+          <p className="text-sm text-gray-600">
+            Please connect your wallet to upload files
+          </p>
         ) : isDragActive ? (
           <p className="text-sm text-gray-600">Drop the files here...</p>
         ) : (

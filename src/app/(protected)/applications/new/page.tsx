@@ -3,49 +3,54 @@
 import { useState } from 'react'
 import { useWallet } from "@solana/wallet-adapter-react"
 import { useRouter } from 'next/navigation'
+import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
 import { PatentForm } from '@/app/_components/forms/PatentForm'
 import { TrademarkForm } from '@/app/_components/forms/TrademarkForm'
 import { CopyrightForm } from '@/app/_components/forms/CopyrightForm'
-import { db } from '@/lib/database'
 import { useToast } from "@/components/ui/use-toast"
-import { ApplicationFormData } from '@/lib/validations'
-
-type ApplicationType = 'patent' | 'trademark' | 'copyright'
 
 export default function NewApplicationPage() {
   const { publicKey } = useWallet()
   const router = useRouter()
-  const [selectedType, setSelectedType] = useState<ApplicationType | null>(null)
+  const { toast } = useToast()
+  const [selectedType, setSelectedType] = useState<'patent' | 'trademark' | 'copyright' | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { toast } = useToast()
 
-  const handleSubmit = async (formData: ApplicationFormData) => {
+  const handleSubmit = async (formData: any) => {
     if (!publicKey) return
     setLoading(true)
     setError(null)
 
     try {
-      const application = await db.createApplication({
-        ...formData,
-        application_type: selectedType!,
-        wallet_address: publicKey.toBase58(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      const supabase = createBrowserSupabaseClient()
+
+      // Create the application
+      const { data, error: submitError } = await supabase
+        .from('ip_applications')
+        .insert([{
+          ...formData,
+          application_type: selectedType,
+          wallet_address: publicKey.toBase58(),
+          status: 'draft'
+        }])
+        .select()
+        .single()
+
+      if (submitError) throw submitError
 
       toast({
         title: 'Success',
-        description: 'Application submitted successfully'
+        description: 'Application created successfully'
       })
 
-      router.push(`/applications/${application.id}`)
+      router.push('/applications')
     } catch (err) {
       console.error('Error submitting application:', err)
       setError('Failed to submit application')
       toast({
         title: 'Error',
-        description: 'Failed to submit application. Please try again.',
+        description: 'Failed to create application',
         variant: 'destructive'
       })
     } finally {
