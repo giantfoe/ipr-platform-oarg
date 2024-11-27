@@ -127,6 +127,21 @@ export default function AdminApplicationsPage() {
     }
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'in-review':
+        return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
   if (!publicKey) {
     return (
       <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
@@ -185,18 +200,22 @@ export default function AdminApplicationsPage() {
                     <div className="text-sm text-gray-900 capitalize">{app.application_type}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <select
-                      value={app.status}
-                      onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                      disabled={updating === app.id}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="pending">Pending</option>
-                      <option value="in-review">In Review</option>
-                      <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
+                    <StatusBadge 
+                      applicationId={app.id} 
+                      initialStatus={app.status} 
+                      isAdmin={true}
+                      onStatusChange={(newStatus) => {
+                        const updatedApps = applications.map(a => 
+                          a.id === app.id ? { ...a, status: newStatus } : a
+                        )
+                        setApplications(updatedApps)
+                      }}
+                    />
+                    {updating === app.id && (
+                      <div className="mt-2 flex justify-center">
+                        <LoadingSpinner size="sm" />
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
@@ -206,7 +225,7 @@ export default function AdminApplicationsPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
                       onClick={() => router.push(`/admin/applications/${app.id}`)}
-                      className="text-primary hover:text-primary/80"
+                      className="text-primary hover:text-primary/80 px-3 py-1 rounded-md hover:bg-gray-100"
                     >
                       View Details
                     </button>
