@@ -7,6 +7,7 @@ import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 import { StatusBadge } from '@/app/_components/ui/StatusBadge'
 import { useToast } from "@/components/ui/use-toast"
+import { DownloadCertificate } from '@/app/_components/DownloadCertificate'
 
 interface ApplicationDetails {
   id: string
@@ -237,6 +238,22 @@ export default function ApplicationDetailsPage({ params }: { params: { id: strin
               ))}
             </div>
           </div>
+
+          {application.status === 'approved' && (
+            <div className="mt-4">
+              <DownloadCertificate 
+                applicationData={{
+                  id: application.id,
+                  title: application.title,
+                  applicant_name: application.applicant_name,
+                  company_name: application.company_name,
+                  application_type: application.application_type,
+                  created_at: application.created_at,
+                  approved_at: application.updated_at
+                }} 
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
