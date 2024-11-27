@@ -7,7 +7,7 @@ import { PatentForm } from '@/app/_components/forms/PatentForm'
 import { TrademarkForm } from '@/app/_components/forms/TrademarkForm'
 import { CopyrightForm } from '@/app/_components/forms/CopyrightForm'
 import { db } from '@/lib/database'
-import { toast } from '@/components/ui/use-toast'
+import { useToast } from "@/components/ui/use-toast"
 import { ApplicationFormData } from '@/lib/validations'
 
 type ApplicationType = 'patent' | 'trademark' | 'copyright'
@@ -18,6 +18,7 @@ export default function NewApplicationPage() {
   const [selectedType, setSelectedType] = useState<ApplicationType | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   const handleSubmit = async (formData: ApplicationFormData) => {
     if (!publicKey) return

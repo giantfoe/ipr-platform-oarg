@@ -8,6 +8,7 @@ import { AdminDetector } from './_components/AdminDetector'
 import ClientOnly from '@/app/_components/ClientOnly'
 import "./globals.css"
 import { FirebaseProvider } from '@/lib/firebase/context'
+import { ToastProvider } from "@/components/ui/toast"
 
 export const metadata: Metadata = {
   title: "IP Register - Modern IP Registration Platform",
@@ -38,6 +39,7 @@ export default function RootLayout({
             </WalletProvider>
           </ThemeProvider>
         </FirebaseProvider>
+        <ToastProvider />
       </body>
     </html>
   )
