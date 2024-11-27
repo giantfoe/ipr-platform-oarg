@@ -1,95 +1,108 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { createClient } from '@/utils/supabase/client'
-import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
-import { Shield } from 'lucide-react'
-import ClientOnly from '@/app/_components/ClientOnly'
+import { useEffect, useState } from 'react'
 import { useWallet } from "@solana/wallet-adapter-react"
+import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
+import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
+import { useToast } from "@/components/ui/use-toast"
 
-interface UserProfile {
-  id: string
+interface Profile {
   wallet_address: string
-  full_name: string | null
-  company_name: string | null
-  email: string | null
-  phone_number: string | null
+  full_name: string
+  company_name: string
+  email: string
   is_admin: boolean
   created_at: string
 }
 
-const AdminUsersPage: React.FC = () => {
+export default function AdminUsersPage() {
   const { publicKey } = useWallet()
-  const [users, setUsers] = useState<UserProfile[]>([])
+  const { toast } = useToast()
+  const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadUsers()
-  }, [])
+    loadProfiles()
+  }, [publicKey])
 
-  const loadUsers = async () => {
+  async function loadProfiles() {
+    if (!publicKey) return
+    
     try {
-      const supabase = createClient()
+      const supabase = createBrowserSupabaseClient()
+
+      // Verify admin status
+      const { data: adminCheck, error: adminError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('wallet_address', publicKey.toBase58())
+        .single()
+
+      if (adminError || !adminCheck?.is_admin) {
+        throw new Error('Unauthorized: Admin access required')
+      }
+
+      // Get all profiles
       const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
 
       if (fetchError) throw fetchError
-      setUsers(data || [])
-    } catch (error) {
-      console.error('Error loading users:', error)
-      setError('Failed to load users')
+      setProfiles(data || [])
+    } catch (err) {
+      console.error('Error loading profiles:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load profiles')
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleAdminStatus = async (userId: string, currentStatus: boolean) => {
+  const toggleAdminStatus = async (walletAddress: string, currentStatus: boolean) => {
     if (!publicKey) return
-    setUpdating(userId)
-    
+    setUpdating(walletAddress)
+
     try {
-      const supabase = createClient()
-      
-      // Call the database function
-      const { data, error: toggleError } = await supabase
-        .rpc('toggle_admin_status', {
-          user_id: userId,
-          admin_wallet: publicKey.toBase58()
+      const supabase = createBrowserSupabaseClient()
+
+      // Update admin status
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ 
+          is_admin: !currentStatus,
+          updated_at: new Date().toISOString()
         })
+        .eq('wallet_address', walletAddress)
 
-      if (toggleError) {
-        console.error('Toggle error:', toggleError)
-        throw new Error(toggleError.message)
-      }
+      if (updateError) throw updateError
 
-      if (!data.success) {
-        console.error('Operation failed:', data.error)
-        throw new Error(data.error)
-      }
+      // Refresh profiles
+      await loadProfiles()
 
-      // Update local state
-      setUsers(prevUsers =>
-        prevUsers.map(user =>
-          user.id === userId
-            ? { ...user, is_admin: !currentStatus }
-            : user
-        )
-      )
-    } catch (error: any) {
-      console.error('Error updating admin status:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint
+      toast({
+        title: 'Success',
+        description: `User ${!currentStatus ? 'promoted to' : 'removed from'} admin`,
       })
-      // You might want to show this error to the user
-      setError(error.message || 'Failed to update admin status')
+    } catch (err) {
+      console.error('Error updating admin status:', err)
+      toast({
+        title: 'Error',
+        description: 'Failed to update admin status',
+        variant: 'destructive'
+      })
     } finally {
       setUpdating(null)
     }
+  }
+
+  if (!publicKey) {
+    return (
+      <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
+        Please connect your wallet to access the admin panel.
+      </div>
+    )
   }
 
   if (loading) {
@@ -100,95 +113,73 @@ const AdminUsersPage: React.FC = () => {
     )
   }
 
-  return (
-    <ClientOnly>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Manage Users</h1>
-          <div className="text-sm text-gray-500">
-            Total Users: {users.length}
-          </div>
-        </div>
-
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Wallet Address</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {user.full_name || 'No Name Set'}
-                        </div>
-                        {user.company_name && (
-                          <div className="text-sm text-gray-500">
-                            {user.company_name}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 font-mono">
-                      {user.wallet_address.substring(0, 4)}...
-                      {user.wallet_address.substring(user.wallet_address.length - 4)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">
-                      {user.email || 'No Email'}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {user.phone_number || 'No Phone'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.is_admin 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {user.is_admin ? 'Admin' : 'User'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => toggleAdminStatus(user.id, user.is_admin)}
-                      disabled={updating === user.id}
-                      className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                        user.is_admin
-                          ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                          : 'bg-primary/10 text-primary hover:bg-primary/20'
-                      }`}
-                    >
-                      {updating === user.id ? (
-                        <LoadingSpinner size="sm" />
-                      ) : (
-                        <>
-                          <Shield className="h-4 w-4 mr-1" />
-                          {user.is_admin ? 'Remove Admin' : 'Make Admin'}
-                        </>
-                      )}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 text-red-700 rounded-md">
+        {error}
       </div>
-    </ClientOnly>
-  )
-}
+    )
+  }
 
-export default AdminUsersPage 
+  return (
+    <div className="space-y-6 p-6">
+      <h1 className="text-2xl font-bold">User Management</h1>
+
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Wallet</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {profiles.map((profile) => (
+              <tr key={profile.wallet_address} className="hover:bg-gray-50">
+                <td className="px-6 py-4">
+                  <div className="text-sm font-medium text-gray-900">{profile.full_name}</div>
+                  <div className="text-sm text-gray-500">{profile.email}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">{profile.company_name}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm font-mono text-gray-900">{profile.wallet_address}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    profile.is_admin ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {profile.is_admin ? 'Admin' : 'User'}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <button
+                    onClick={() => toggleAdminStatus(profile.wallet_address, profile.is_admin)}
+                    disabled={updating === profile.wallet_address || profile.wallet_address === publicKey.toBase58()}
+                    className={`px-3 py-1 rounded-md text-sm font-medium ${
+                      profile.is_admin
+                        ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                        : 'bg-green-100 text-green-800 hover:bg-green-200'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {updating === profile.wallet_address ? (
+                      <LoadingSpinner size="sm" />
+                    ) : profile.is_admin ? (
+                      'Remove Admin'
+                    ) : (
+                      'Make Admin'
+                    )}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+} 
