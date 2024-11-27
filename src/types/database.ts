@@ -1,17 +1,20 @@
-export interface IPApplication {
+export interface Application {
   id: string;
-  wallet_address: string;
   title: string;
   description: string;
   application_type: 'patent' | 'trademark' | 'copyright';
-  regions: string[];
   status: 'draft' | 'pending' | 'in-review' | 'approved' | 'rejected';
+  regions: string[];
   created_at: string;
   updated_at: string;
-  submission_date?: string;
-  approval_date?: string;
-  rejection_date?: string;
-  rejection_reason?: string;
+  wallet_address: string;
+  applicant_name: string;
+  company_name: string;
+  national_id?: string;
+  phone_number?: string;
+  documents?: Document[];
+  status_history?: StatusHistory[];
+  profiles?: Profile;
 }
 
 export interface StatusHistory {
@@ -19,27 +22,25 @@ export interface StatusHistory {
   application_id: string;
   status: string;
   notes?: string;
-  created_by: string;
   created_at: string;
+  created_by: string;
 }
 
-export interface ApplicationDocument {
-  id: string;
-  application_id: string;
-  document_type: string;
-  file_name: string;
-  file_url: string;
-  uploaded_by: string;
-  uploaded_at: string;
+export interface Profile {
+  wallet_address: string;
+  full_name: string;
+  company_name?: string;
+  phone_number?: string;
+  email?: string;
+  is_admin: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface ApplicationPayment {
+export interface Document {
   id: string;
   application_id: string;
-  amount: number;
-  currency: string;
-  status: 'pending' | 'completed' | 'failed';
-  transaction_hash?: string;
-  paid_at?: string;
+  file_path: string;
+  file_type: string;
   created_at: string;
 } 

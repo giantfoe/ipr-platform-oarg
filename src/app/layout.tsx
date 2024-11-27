@@ -7,6 +7,7 @@ import { NavbarWrapper } from './_components/layout/NavbarWrapper'
 import { AdminDetector } from './_components/AdminDetector'
 import ClientOnly from '@/app/_components/ClientOnly'
 import "./globals.css"
+import { FirebaseProvider } from '@/lib/firebase/context'
 
 export const metadata: Metadata = {
   title: "IP Register - Modern IP Registration Platform",
@@ -21,20 +22,22 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <ThemeProvider>
-          <WalletProvider>
-            <AuthProvider>
-              <ClientOnly>
-                <NavbarWrapper />
-                <main className="pt-16">
-                  {children}
-                </main>
-                <AdminDetector />
-                <Toaster />
-              </ClientOnly>
-            </AuthProvider>
-          </WalletProvider>
-        </ThemeProvider>
+        <FirebaseProvider>
+          <ThemeProvider>
+            <WalletProvider>
+              <AuthProvider>
+                <ClientOnly>
+                  <NavbarWrapper />
+                  <main className="pt-16">
+                    {children}
+                  </main>
+                  <AdminDetector />
+                  <Toaster />
+                </ClientOnly>
+              </AuthProvider>
+            </WalletProvider>
+          </ThemeProvider>
+        </FirebaseProvider>
       </body>
     </html>
   )

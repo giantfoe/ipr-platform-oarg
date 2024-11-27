@@ -6,26 +6,47 @@ import { useRouter } from 'next/navigation'
 import { PatentForm } from '@/app/_components/forms/PatentForm'
 import { TrademarkForm } from '@/app/_components/forms/TrademarkForm'
 import { CopyrightForm } from '@/app/_components/forms/CopyrightForm'
-import { ApplicationType } from '@/types/database'
+import { db } from '@/lib/database'
+import { toast } from '@/components/ui/use-toast'
+import { ApplicationFormData } from '@/lib/validations'
+
+type ApplicationType = 'patent' | 'trademark' | 'copyright'
 
 export default function NewApplicationPage() {
   const { publicKey } = useWallet()
   const router = useRouter()
-  const [type, setType] = useState<ApplicationType | null>(null)
+  const [selectedType, setSelectedType] = useState<ApplicationType | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: ApplicationFormData) => {
     if (!publicKey) return
     setLoading(true)
     setError(null)
 
     try {
-      console.log('Submitting application:', formData)
-      router.push('/applications')
+      const application = await db.createApplication({
+        ...formData,
+        application_type: selectedType!,
+        wallet_address: publicKey.toBase58(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+
+      toast({
+        title: 'Success',
+        description: 'Application submitted successfully'
+      })
+
+      router.push(`/applications/${application.id}`)
     } catch (err) {
       console.error('Error submitting application:', err)
       setError('Failed to submit application')
+      toast({
+        title: 'Error',
+        description: 'Failed to submit application. Please try again.',
+        variant: 'destructive'
+      })
     } finally {
       setLoading(false)
     }
@@ -45,27 +66,27 @@ export default function NewApplicationPage() {
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">New IP Application</h1>
 
-      {!type ? (
+      {!selectedType ? (
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-lg font-medium mb-4">Select Application Type</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
-              onClick={() => setType('patent')}
-              className="p-4 border rounded-lg hover:border-primary hover:bg-primary/5"
+              onClick={() => setSelectedType('patent')}
+              className="p-4 border rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
             >
               <h3 className="font-medium">Patent</h3>
               <p className="text-sm text-gray-500">Protect your inventions</p>
             </button>
             <button
-              onClick={() => setType('trademark')}
-              className="p-4 border rounded-lg hover:border-primary hover:bg-primary/5"
+              onClick={() => setSelectedType('trademark')}
+              className="p-4 border rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
             >
               <h3 className="font-medium">Trademark</h3>
               <p className="text-sm text-gray-500">Protect your brand</p>
             </button>
             <button
-              onClick={() => setType('copyright')}
-              className="p-4 border rounded-lg hover:border-primary hover:bg-primary/5"
+              onClick={() => setSelectedType('copyright')}
+              className="p-4 border rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
             >
               <h3 className="font-medium">Copyright</h3>
               <p className="text-sm text-gray-500">Protect your creative works</p>
@@ -74,28 +95,28 @@ export default function NewApplicationPage() {
         </div>
       ) : (
         <div className="bg-white shadow rounded-lg p-6">
-          {type === 'patent' && (
+          {selectedType === 'patent' && (
             <PatentForm 
               onSubmit={handleSubmit} 
               loading={loading}
               error={error}
-              onCancel={() => router.back()}
+              onCancel={() => setSelectedType(null)}
             />
           )}
-          {type === 'trademark' && (
+          {selectedType === 'trademark' && (
             <TrademarkForm 
               onSubmit={handleSubmit} 
               loading={loading}
               error={error}
-              onCancel={() => router.back()}
+              onCancel={() => setSelectedType(null)}
             />
           )}
-          {type === 'copyright' && (
+          {selectedType === 'copyright' && (
             <CopyrightForm 
               onSubmit={handleSubmit} 
               loading={loading}
               error={error}
-              onCancel={() => router.back()}
+              onCancel={() => setSelectedType(null)}
             />
           )}
         </div>

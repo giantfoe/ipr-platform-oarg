@@ -3,18 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useWallet } from "@solana/wallet-adapter-react"
 import { useRouter } from 'next/navigation'
-import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 import { StatusBadge } from '@/app/_components/ui/StatusBadge'
-
-interface Application {
-  id: string
-  title: string
-  description: string
-  application_type: string
-  status: string
-  created_at: string
-}
+import { db } from '@/lib/database'
+import { Application } from '@/types/database'
+import { toast } from '@/components/ui/use-toast'
+import { createClient } from '@/utils/supabase/client'
 
 export default function ApplicationsPage() {
   const { publicKey } = useWallet()
@@ -24,43 +18,63 @@ export default function ApplicationsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!publicKey) {
+      setLoading(false)
+      return
+    }
+
+    const walletAddress = publicKey.toBase58()
+    const supabase = createClient()
+
+    // Initial fetch
     async function loadApplications() {
-      if (!publicKey) return
-      
       try {
-        console.log('Loading user applications...')
-        const supabase = createBrowserSupabaseClient()
-        
-        const { data, error } = await supabase
-          .from('ip_applications')
-          .select(`
-            *,
-            status_history (
-              status,
-              created_at,
-              notes
-            )
-          `)
-          .eq('wallet_address', publicKey.toBase58())
-          .order('created_at', { ascending: false })
-
-        if (error) {
-          console.error('Error fetching applications:', error)
-          throw error
-        }
-
-        console.log('Applications found:', data?.length)
-        setApplications(data || [])
+        const data = await db.getApplicationsByWallet(walletAddress)
+        setApplications(data)
       } catch (err) {
         console.error('Error loading applications:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load applications')
+        setError('Failed to load applications')
+        toast({
+          title: 'Error',
+          description: 'Failed to load applications',
+          variant: 'destructive'
+        })
       } finally {
         setLoading(false)
       }
     }
 
     loadApplications()
+
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('applications-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ip_applications',
+          filter: `wallet_address=eq.${walletAddress}`
+        },
+        async (payload) => {
+          console.log('Real-time update received:', payload)
+          // Reload applications when changes occur
+          const data = await db.getApplicationsByWallet(walletAddress)
+          setApplications(data)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [publicKey])
+
+  // Security check - ensure users can only see their own applications
+  const userApplications = applications.filter(
+    app => app.wallet_address === publicKey?.toBase58()
+  )
 
   if (!publicKey) {
     return (
@@ -99,7 +113,7 @@ export default function ApplicationsPage() {
       </div>
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        {applications.length === 0 ? (
+        {userApplications.length === 0 ? (
           <div className="p-6 text-center text-gray-500">
             No applications found. Create your first application to get started.
           </div>
@@ -114,7 +128,7 @@ export default function ApplicationsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {applications.map((app) => (
+              {userApplications.map((app) => (
                 <tr 
                   key={app.id}
                   onClick={() => router.push(`/applications/${app.id}`)}
