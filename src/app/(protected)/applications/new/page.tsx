@@ -3,17 +3,19 @@
 import { useState } from 'react'
 import { useWallet } from "@solana/wallet-adapter-react"
 import { useRouter } from 'next/navigation'
-import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
 import { PatentForm } from '@/app/_components/forms/PatentForm'
 import { TrademarkForm } from '@/app/_components/forms/TrademarkForm'
 import { CopyrightForm } from '@/app/_components/forms/CopyrightForm'
+import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
 import { useToast } from "@/components/ui/use-toast"
+
+type ApplicationType = 'patent' | 'trademark' | 'copyright' | null
 
 export default function NewApplicationPage() {
   const { publicKey } = useWallet()
   const router = useRouter()
   const { toast } = useToast()
-  const [selectedType, setSelectedType] = useState<'patent' | 'trademark' | 'copyright' | null>(null)
+  const [selectedType, setSelectedType] = useState<ApplicationType>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -25,23 +27,40 @@ export default function NewApplicationPage() {
     try {
       const supabase = createBrowserSupabaseClient()
 
-      // Create the application
+      const formattedData = {
+        ...formData,
+        advantages: `{${Array.isArray(formData.advantages) 
+          ? formData.advantages.map(a => `"${a}"`).join(',')
+          : formData.advantages ? `"${formData.advantages}"` : ''}}`,
+        claims: `{${Array.isArray(formData.claims)
+          ? formData.claims.map(c => `"${c}"`).join(',')
+          : formData.claims ? `"${formData.claims}"` : ''}}`,
+        regions: `{${Array.isArray(formData.regions)
+          ? formData.regions.map(r => `"${r}"`).join(',')
+          : formData.regions ? `"${formData.regions}"` : ''}}`,
+        application_type: selectedType,
+        wallet_address: publicKey.toBase58(),
+        status: 'draft',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      console.log('Submitting formatted data:', formattedData)
+
       const { data, error: submitError } = await supabase
         .from('ip_applications')
-        .insert([{
-          ...formData,
-          application_type: selectedType,
-          wallet_address: publicKey.toBase58(),
-          status: 'draft'
-        }])
+        .insert([formattedData])
         .select()
         .single()
 
-      if (submitError) throw submitError
+      if (submitError) {
+        console.error('Submission error:', submitError)
+        throw submitError
+      }
 
       toast({
         title: 'Success',
-        description: 'Application created successfully'
+        description: 'Application submitted successfully'
       })
 
       router.push('/applications')
@@ -50,7 +69,7 @@ export default function NewApplicationPage() {
       setError('Failed to submit application')
       toast({
         title: 'Error',
-        description: 'Failed to create application',
+        description: 'Failed to submit application. Please try again.',
         variant: 'destructive'
       })
     } finally {
@@ -60,10 +79,8 @@ export default function NewApplicationPage() {
 
   if (!publicKey) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-yellow-50 text-yellow-700 p-4 rounded-md">
-          Please connect your wallet to create an application.
-        </div>
+      <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
+        Please connect your wallet to create an application.
       </div>
     )
   }

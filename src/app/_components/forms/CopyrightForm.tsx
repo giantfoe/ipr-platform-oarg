@@ -98,17 +98,19 @@ export function CopyrightForm({ onSubmit, loading, error, onCancel }: CopyrightF
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
-            label="Phone Number"
-            {...register('phone_number')}
+            label="Mobile Number"
+            {...register('mobile_number')}
             type="tel"
-            placeholder="Optional"
+            placeholder="Enter your mobile number"
+            error={!!errors.mobile_number}
+            helperText={errors.mobile_number?.message}
           />
 
           <Input
             label="Email"
             {...register('email')}
             type="email"
-            placeholder="Optional"
+            placeholder="Enter your email"
             error={!!errors.email}
             helperText={errors.email?.message}
           />

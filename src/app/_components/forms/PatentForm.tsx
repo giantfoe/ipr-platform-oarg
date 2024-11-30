@@ -16,12 +16,30 @@ interface PatentFormProps {
 }
 
 export function PatentForm({ onSubmit, loading, error, onCancel }: PatentFormProps) {
-  const { register, handleSubmit, formState: { errors } } = useForm<PatentFormData>({
-    resolver: zodResolver(patentSchema)
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors, isSubmitting } 
+  } = useForm<PatentFormData>({
+    resolver: zodResolver(patentSchema),
+    defaultValues: {
+      advantages: '',
+      claims: '',
+      regions: ''
+    }
   })
 
+  const onSubmitForm = async (data: PatentFormData) => {
+    try {
+      // Data is already transformed by zod schema
+      await onSubmit(data)
+    } catch (err) {
+      console.error('Form submission error:', err)
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
       <div className="space-y-4">
         <Input
           label="Title"
@@ -80,34 +98,44 @@ export function PatentForm({ onSubmit, loading, error, onCancel }: PatentFormPro
         />
 
         <Textarea
-          label="Advantages"
+          label="Advantages (one per line)"
           {...register('advantages')}
-          placeholder="List the advantages of your invention"
+          placeholder="List your advantages (one per line)"
           error={!!errors.advantages}
           helperText={errors.advantages?.message}
         />
 
         <Textarea
-          label="Claims"
+          label="Claims (one per line)"
           {...register('claims')}
-          placeholder="List your patent claims"
+          placeholder="List your claims (one per line)"
           error={!!errors.claims}
           helperText={errors.claims?.message}
         />
 
+        <Textarea
+          label="Regions (one per line)"
+          {...register('regions')}
+          placeholder="List your regions (one per line)"
+          error={!!errors.regions}
+          helperText={errors.regions?.message}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
-            label="Phone Number"
-            {...register('phone_number')}
+            label="Mobile Number"
+            {...register('mobile_number')}
             type="tel"
-            placeholder="Optional"
+            placeholder="Enter your mobile number"
+            error={!!errors.mobile_number}
+            helperText={errors.mobile_number?.message}
           />
 
           <Input
             label="Email"
             {...register('email')}
             type="email"
-            placeholder="Optional"
+            placeholder="Enter your email"
             error={!!errors.email}
             helperText={errors.email?.message}
           />
@@ -125,15 +153,15 @@ export function PatentForm({ onSubmit, loading, error, onCancel }: PatentFormPro
           type="button"
           variant="outline"
           onClick={onCancel}
-          disabled={loading}
+          disabled={loading || isSubmitting}
         >
           Cancel
         </Button>
         <Button
           type="submit"
-          disabled={loading}
+          disabled={loading || isSubmitting}
         >
-          {loading ? <LoadingSpinner size="sm" /> : 'Submit Application'}
+          {loading || isSubmitting ? <LoadingSpinner size="sm" /> : 'Submit Application'}
         </Button>
       </div>
     </form>
