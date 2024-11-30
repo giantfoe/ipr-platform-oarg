@@ -54,16 +54,14 @@ export const trademarkSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   applicant_name: z.string().min(1, 'Applicant name is required'),
   company_name: z.string().optional(),
-  mark_type: z.enum(['word', 'logo', 'combined', 'sound', 'other'], {
-    required_error: 'Please select a mark type'
-  }),
+  mark_type: z.string().nonempty('Mark type is required'),
   goods_services: z.string().min(1, 'Goods/Services description is required'),
-  prior_registrations: z.string().optional(),
-  phone_number: z.string().optional(),
-  email: z.string().email('Invalid email').optional(),
+  prior_registrations: z.string().transform((str) => str.split('\n').filter(Boolean)),
   mobile_number: z.string()
     .min(1, 'Mobile number is required')
     .regex(phoneRegex, 'Please enter a valid mobile number'),
+  email: z.string().email('Invalid email').optional(),
+  regions: z.string().transform((str) => str.split('\n').filter(Boolean))
 })
 
 export type TrademarkFormData = z.infer<typeof trademarkSchema>
@@ -78,12 +76,12 @@ export const copyrightSchema = z.object({
   }),
   creation_date: z.string().min(1, 'Creation date is required'),
   first_publication: z.string().optional(),
-  authors: z.string().min(1, 'At least one author is required'),
-  phone_number: z.string().optional(),
-  email: z.string().email('Invalid email').optional(),
+  authors: z.string().transform((str) => str.split('\n').filter(Boolean)),
   mobile_number: z.string()
     .min(1, 'Mobile number is required')
     .regex(phoneRegex, 'Please enter a valid mobile number'),
+  email: z.string().email('Invalid email').optional(),
+  regions: z.string().transform((str) => str.split('\n').filter(Boolean))
 })
 
 export type CopyrightFormData = z.infer<typeof copyrightSchema> 

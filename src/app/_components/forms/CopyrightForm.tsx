@@ -4,9 +4,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
+import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { Select } from '@/components/ui/Select'
 import { copyrightSchema, type CopyrightFormData } from '@/lib/validations'
 
 interface CopyrightFormProps {
@@ -17,12 +17,28 @@ interface CopyrightFormProps {
 }
 
 export function CopyrightForm({ onSubmit, loading, error, onCancel }: CopyrightFormProps) {
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(copyrightSchema)
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors, isSubmitting } 
+  } = useForm<CopyrightFormData>({
+    resolver: zodResolver(copyrightSchema),
+    defaultValues: {
+      authors: '',
+      regions: ''
+    }
   })
 
+  const onSubmitForm = async (data: CopyrightFormData) => {
+    try {
+      await onSubmit(data)
+    } catch (err) {
+      console.error('Form submission error:', err)
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
       <div className="space-y-4">
         <Input
           label="Title"
@@ -89,7 +105,7 @@ export function CopyrightForm({ onSubmit, loading, error, onCancel }: CopyrightF
         </div>
 
         <Textarea
-          label="Authors"
+          label="Authors (one per line)"
           {...register('authors')}
           placeholder="List all authors and their contributions"
           error={!!errors.authors}
@@ -115,6 +131,14 @@ export function CopyrightForm({ onSubmit, loading, error, onCancel }: CopyrightF
             helperText={errors.email?.message}
           />
         </div>
+
+        <Textarea
+          label="Regions (one per line)"
+          {...register('regions')}
+          placeholder="List the regions for registration"
+          error={!!errors.regions}
+          helperText={errors.regions?.message}
+        />
       </div>
 
       {error && (
@@ -128,15 +152,15 @@ export function CopyrightForm({ onSubmit, loading, error, onCancel }: CopyrightF
           type="button"
           variant="outline"
           onClick={onCancel}
-          disabled={loading}
+          disabled={loading || isSubmitting}
         >
           Cancel
         </Button>
         <Button
           type="submit"
-          disabled={loading}
+          disabled={loading || isSubmitting}
         >
-          {loading ? <LoadingSpinner size="sm" /> : 'Submit Application'}
+          {loading || isSubmitting ? <LoadingSpinner size="sm" /> : 'Submit Application'}
         </Button>
       </div>
     </form>

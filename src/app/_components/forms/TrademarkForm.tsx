@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { Select } from '@/components/ui/Select'
 import { trademarkSchema, type TrademarkFormData } from '@/lib/validations'
+import { useState } from 'react'
 
 interface TrademarkFormProps {
   onSubmit: (data: TrademarkFormData) => Promise<void>
@@ -17,16 +17,57 @@ interface TrademarkFormProps {
 }
 
 export function TrademarkForm({ onSubmit, loading, error, onCancel }: TrademarkFormProps) {
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(trademarkSchema)
+  const [debugValues, setDebugValues] = useState({
+    mark_type: '',
+    title: '',
+    description: '',
+    applicant_name: ''
   })
 
+  const { 
+    register, 
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm<TrademarkFormData>({
+    resolver: zodResolver(trademarkSchema),
+    mode: 'onChange',
+    defaultValues: {
+      title: '',
+      description: '',
+      applicant_name: '',
+      company_name: '',
+      mark_type: '',
+      goods_services: '',
+      prior_registrations: '',
+      mobile_number: '',
+      email: '',
+      regions: ''
+    }
+  })
+
+  const onSubmitForm = async (data: TrademarkFormData) => {
+    try {
+      console.log('Form data:', data)
+      await onSubmit(data)
+    } catch (err) {
+      console.error('Form submission error:', err)
+    }
+  }
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value
+    setDebugValues(prev => ({ ...prev, mark_type: value }))
+    register('mark_type').onChange(e)
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-6">
       <div className="space-y-4">
         <Input
           label="Title"
-          {...register('title')}
+          {...register('title', {
+            onChange: (e) => setDebugValues(prev => ({ ...prev, title: e.target.value }))
+          })}
           placeholder="Enter the trademark name"
           error={!!errors.title}
           helperText={errors.title?.message}
@@ -34,7 +75,9 @@ export function TrademarkForm({ onSubmit, loading, error, onCancel }: TrademarkF
 
         <Textarea
           label="Description"
-          {...register('description')}
+          {...register('description', {
+            onChange: (e) => setDebugValues(prev => ({ ...prev, description: e.target.value }))
+          })}
           placeholder="Provide a description of your trademark"
           error={!!errors.description}
           helperText={errors.description?.message}
@@ -43,7 +86,9 @@ export function TrademarkForm({ onSubmit, loading, error, onCancel }: TrademarkF
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             label="Applicant Name"
-            {...register('applicant_name')}
+            {...register('applicant_name', {
+              onChange: (e) => setDebugValues(prev => ({ ...prev, applicant_name: e.target.value }))
+            })}
             placeholder="Full legal name"
             error={!!errors.applicant_name}
             helperText={errors.applicant_name?.message}
@@ -56,19 +101,30 @@ export function TrademarkForm({ onSubmit, loading, error, onCancel }: TrademarkF
           />
         </div>
 
-        <Select
-          label="Mark Type"
-          {...register('mark_type')}
-          error={!!errors.mark_type}
-          helperText={errors.mark_type?.message}
-        >
-          <option value="">Select mark type...</option>
-          <option value="word">Word Mark</option>
-          <option value="logo">Logo Mark</option>
-          <option value="combined">Combined Mark</option>
-          <option value="sound">Sound Mark</option>
-          <option value="other">Other</option>
-        </Select>
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-200">
+            Mark Type <span className="text-red-500">*</span>
+          </label>
+          <select
+            {...register('mark_type')}
+            onChange={handleSelectChange}
+            className={`w-full px-3 py-2 bg-white text-gray-900 rounded-md border ${
+              errors.mark_type ? 'border-red-500' : 'border-gray-300'
+            }`}
+          >
+            <option value="">Select mark type...</option>
+            <option value="word">Word Mark</option>
+            <option value="logo">Logo Mark</option>
+            <option value="combined">Combined Mark</option>
+            <option value="sound">Sound Mark</option>
+            <option value="other">Other</option>
+          </select>
+          {errors.mark_type && (
+            <p className="mt-1 text-sm text-red-500">
+              {errors.mark_type.message}
+            </p>
+          )}
+        </div>
 
         <Textarea
           label="Goods/Services"
@@ -79,9 +135,11 @@ export function TrademarkForm({ onSubmit, loading, error, onCancel }: TrademarkF
         />
 
         <Textarea
-          label="Prior Registrations"
+          label="Prior Registrations (one per line)"
           {...register('prior_registrations')}
-          placeholder="List any prior trademark registrations (optional)"
+          placeholder="List any prior trademark registrations"
+          error={!!errors.prior_registrations}
+          helperText={errors.prior_registrations?.message}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -103,6 +161,14 @@ export function TrademarkForm({ onSubmit, loading, error, onCancel }: TrademarkF
             helperText={errors.email?.message}
           />
         </div>
+
+        <Textarea
+          label="Regions (one per line)"
+          {...register('regions')}
+          placeholder="List the regions for registration"
+          error={!!errors.regions}
+          helperText={errors.regions?.message}
+        />
       </div>
 
       {error && (
@@ -116,17 +182,28 @@ export function TrademarkForm({ onSubmit, loading, error, onCancel }: TrademarkF
           type="button"
           variant="outline"
           onClick={onCancel}
-          disabled={loading}
+          disabled={loading || isSubmitting}
         >
           Cancel
         </Button>
         <Button
           type="submit"
-          disabled={loading}
+          disabled={loading || isSubmitting}
         >
-          {loading ? <LoadingSpinner size="sm" /> : 'Submit Application'}
+          {loading || isSubmitting ? <LoadingSpinner size="sm" /> : 'Submit Application'}
         </Button>
       </div>
+
+      <pre className="mt-4 p-4 bg-gray-800 text-white rounded-md text-xs">
+        {JSON.stringify({
+          errors: Object.keys(errors).reduce((acc, key) => ({
+            ...acc,
+            [key]: errors[key]?.message
+          }), {}),
+          isSubmitting,
+          currentValues: debugValues
+        }, null, 2)}
+      </pre>
     </form>
   )
 }
