@@ -43,4 +43,23 @@ export interface Document {
   file_path: string;
   file_type: string;
   created_at: string;
+}
+
+export interface CopyrightApplication {
+  id: string;
+  title: string;
+  description: string;
+  applicant_name: string;
+  company_name?: string;
+  work_type: string;
+  creation_date: string;
+  first_publication?: string;
+  authors: string[];
+  mobile_number: string;
+  email?: string;
+  regions: string[];
+  status: 'draft' | 'pending' | 'in-review' | 'approved' | 'rejected';
+  created_at: string;
+  updated_at: string;
+  wallet_address: string;
 } 

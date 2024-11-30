@@ -71,9 +71,7 @@ export const copyrightSchema = z.object({
   description: z.string().min(1, 'Description is required'),
   applicant_name: z.string().min(1, 'Applicant name is required'),
   company_name: z.string().optional(),
-  work_type: z.enum(['literary', 'musical', 'artistic', 'dramatic', 'audiovisual', 'software', 'other'], {
-    required_error: 'Please select a work type'
-  }),
+  work_type: z.string().min(1, 'Work type is required'),
   creation_date: z.string().min(1, 'Creation date is required'),
   first_publication: z.string().optional(),
   authors: z.string().transform((str) => str.split('\n').filter(Boolean)),
