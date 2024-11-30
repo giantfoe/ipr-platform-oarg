@@ -7,6 +7,12 @@ import { createBrowserSupabaseClient } from '@/utils/supabase/client-utils'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 import { StatusBadge } from '@/app/_components/ui/StatusBadge'
 import { useToast } from "@/components/ui/use-toast"
+import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import debounce from 'lodash/debounce'
+import { CSVLink } from 'react-csv'
+import * as XLSX from 'xlsx'
+import { PDFDownloadLink } from '@react-pdf/renderer'
+import { ApplicationsPDF } from '@/components/ApplicationsPDF'
 
 interface Application {
   id: string
@@ -20,6 +26,13 @@ interface Application {
   wallet_address: string
 }
 
+interface SearchFilters {
+  search: string
+  status: string
+  type: string
+  dateRange: string
+}
+
 export default function AdminApplicationsPage() {
   const { publicKey } = useWallet()
   const router = useRouter()
@@ -27,56 +40,76 @@ export default function AdminApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [updating, setUpdating] = useState<string | null>(null)
+  const [filters, setFilters] = useState<SearchFilters>({
+    search: '',
+    status: '',
+    type: '',
+    dateRange: ''
+  })
+
+  // Filtered applications
+  const filteredApplications = applications.filter(app => {
+    const matchesSearch = filters.search === '' || 
+      app.title.toLowerCase().includes(filters.search.toLowerCase()) ||
+      app.applicant_name.toLowerCase().includes(filters.search.toLowerCase())
+    
+    const matchesStatus = filters.status === '' || app.status === filters.status
+    const matchesType = filters.type === '' || app.application_type === filters.type
+
+    return matchesSearch && matchesStatus && matchesType
+  })
+
+  const handleSearch = debounce((value: string) => {
+    setFilters(prev => ({ ...prev, search: value }))
+  }, 300)
 
   useEffect(() => {
-    async function loadApplications() {
-      if (!publicKey) return
-      
-      try {
-        const supabase = createBrowserSupabaseClient()
-
-        // Verify admin status
-        const { data: adminCheck, error: adminError } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('wallet_address', publicKey.toBase58())
-          .single()
-
-        if (adminError || !adminCheck?.is_admin) {
-          throw new Error('Unauthorized: Admin access required')
-        }
-
-        // Get all applications
-        const { data, error: fetchError } = await supabase
-          .from('ip_applications')
-          .select(`
-            *,
-            profiles (
-              full_name,
-              company_name,
-              email
-            )
-          `)
-          .order('created_at', { ascending: false })
-
-        if (fetchError) throw fetchError
-        setApplications(data || [])
-      } catch (err) {
-        console.error('Error loading applications:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load applications')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     loadApplications()
   }, [publicKey])
 
+  async function loadApplications() {
+    if (!publicKey) return
+    
+    try {
+      const supabase = createBrowserSupabaseClient()
+
+      // Verify admin status
+      const { data: adminCheck, error: adminError } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('wallet_address', publicKey.toBase58())
+        .single()
+
+      if (adminError || !adminCheck?.is_admin) {
+        throw new Error('Unauthorized: Admin access required')
+      }
+
+      // Get all applications
+      const { data, error: fetchError } = await supabase
+        .from('ip_applications')
+        .select(`
+          *,
+          profiles (
+            full_name,
+            company_name,
+            email
+          )
+        `)
+        .order('created_at', { ascending: false })
+
+      if (fetchError) throw fetchError
+      setApplications(data || [])
+    } catch (err) {
+      console.error('Error loading applications:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load applications')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
     if (!publicKey) return
-    setUpdating(applicationId)
-
+    
     try {
       const supabase = createBrowserSupabaseClient()
       
@@ -122,8 +155,6 @@ export default function AdminApplicationsPage() {
         description: 'Failed to update status',
         variant: 'destructive'
       })
-    } finally {
-      setUpdating(null)
     }
   }
 
@@ -140,6 +171,58 @@ export default function AdminApplicationsPage() {
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
+  }
+
+  const ExportButtons = ({ applications }: { applications: Application[] }) => {
+    // Prepare data for export
+    const exportData = applications.map(app => ({
+      'Application ID': app.id,
+      'Title': app.title,
+      'Type': app.application_type,
+      'Status': app.status,
+      'Applicant Name': app.applicant_name,
+      'Company': app.company_name,
+      'Submission Date': new Date(app.created_at).toLocaleDateString(),
+      'Last Updated': new Date(app.updated_at).toLocaleDateString()
+    }))
+
+    // Excel export function
+    const exportToExcel = () => {
+      const ws = XLSX.utils.json_to_sheet(exportData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Applications')
+      XLSX.writeFile(wb, 'applications.xlsx')
+    }
+
+    return (
+      <div className="flex space-x-2">
+        {/* CSV Export */}
+        <CSVLink 
+          data={exportData}
+          filename="applications.csv"
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+        >
+          Export CSV
+        </CSVLink>
+
+        {/* Excel Export */}
+        <button
+          onClick={exportToExcel}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          Export Excel
+        </button>
+
+        {/* PDF Export */}
+        <PDFDownloadLink
+          document={<ApplicationsPDF applications={applications} />}
+          fileName="applications.pdf"
+          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+        >
+          {({ loading }) => loading ? 'Generating PDF...' : 'Export PDF'}
+        </PDFDownloadLink>
+      </div>
+    )
   }
 
   if (!publicKey) {
@@ -168,10 +251,65 @@ export default function AdminApplicationsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Applications Management</h1>
+      {/* Search and Filters Section */}
+      <div className="bg-white shadow rounded-lg p-4 space-y-4">
+        <div className="flex items-center space-x-4">
+          <div className="flex-1">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by title or applicant name..."
+                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+              <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            </div>
+          </div>
+          
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="pending">Pending</option>
+            <option value="in-review">In Review</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+
+          <select
+            value={filters.type}
+            onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">All Types</option>
+            <option value="patent">Patent</option>
+            <option value="trademark">Trademark</option>
+            <option value="copyright">Copyright</option>
+          </select>
+
+          <select
+            value={filters.dateRange}
+            onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
+            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="year">This Year</option>
+          </select>
+        </div>
+
+        {/* Search Results Summary */}
+        <div className="text-sm text-gray-500">
+          Showing {filteredApplications.length} of {applications.length} applications
+        </div>
       </div>
 
+      {/* Applications Table */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -186,7 +324,7 @@ export default function AdminApplicationsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {applications.map((app) => (
+              {filteredApplications.map((app) => (
                 <tr key={app.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{app.title}</div>
@@ -211,11 +349,6 @@ export default function AdminApplicationsPage() {
                         setApplications(updatedApps)
                       }}
                     />
-                    {updating === app.id && (
-                      <div className="mt-2 flex justify-center">
-                        <LoadingSpinner size="sm" />
-                      </div>
-                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
@@ -236,6 +369,9 @@ export default function AdminApplicationsPage() {
           </table>
         </div>
       </div>
+
+      {/* Export Buttons */}
+      <ExportButtons applications={applications} />
     </div>
   )
 } 
