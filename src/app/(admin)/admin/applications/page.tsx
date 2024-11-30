@@ -13,6 +13,8 @@ import { CSVLink } from 'react-csv'
 import * as XLSX from 'xlsx'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { ApplicationsPDF } from '@/components/ApplicationsPDF'
+import { SearchInput } from '@/components/ui/SearchInput'
+import { Select } from '@/components/ui/Select'
 
 interface Application {
   id: string
@@ -255,21 +257,15 @@ export default function AdminApplicationsPage() {
       <div className="bg-white shadow rounded-lg p-4 space-y-4">
         <div className="flex items-center space-x-4">
           <div className="flex-1">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search by title or applicant name..."
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                onChange={(e) => handleSearch(e.target.value)}
-              />
-              <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-            </div>
+            <SearchInput
+              placeholder="Search by title or applicant name..."
+              onChange={(e) => handleSearch(e.target.value)}
+            />
           </div>
           
-          <select
+          <Select
             value={filters.status}
             onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">All Statuses</option>
             <option value="draft">Draft</option>
@@ -277,30 +273,28 @@ export default function AdminApplicationsPage() {
             <option value="in-review">In Review</option>
             <option value="approved">Approved</option>
             <option value="rejected">Rejected</option>
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={filters.type}
             onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">All Types</option>
             <option value="patent">Patent</option>
             <option value="trademark">Trademark</option>
             <option value="copyright">Copyright</option>
-          </select>
+          </Select>
 
-          <select
+          <Select
             value={filters.dateRange}
             onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
-            className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">All Time</option>
             <option value="today">Today</option>
             <option value="week">This Week</option>
             <option value="month">This Month</option>
             <option value="year">This Year</option>
-          </select>
+          </Select>
         </div>
 
         {/* Search Results Summary */}

@@ -9,6 +9,7 @@ import { db } from '@/lib/database'
 import { Application } from '@/types/database'
 import { toast } from '@/components/ui/use-toast'
 import { createClient } from '@/utils/supabase/client'
+import { SearchInput } from '@/components/ui/SearchInput'
 
 export default function ApplicationsPage() {
   const { publicKey } = useWallet()
@@ -102,14 +103,21 @@ export default function ApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">My Applications</h1>
-        <button
-          onClick={() => router.push('/applications/new')}
-          className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
-        >
-          New Application
-        </button>
+        <div className="flex items-center space-x-4">
+          <SearchInput
+            placeholder="Search applications..."
+            onChange={(e) => handleSearch(e.target.value)}
+            containerClassName="w-80"
+          />
+          <button
+            onClick={() => router.push('/applications/new')}
+            className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+          >
+            New Application
+          </button>
+        </div>
       </div>
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
