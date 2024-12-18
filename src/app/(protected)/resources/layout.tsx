@@ -3,6 +3,7 @@
 import { useWallet } from "@solana/wallet-adapter-react"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import ReadAloudButton from '@/components/ReadAloudButton';
 
 export default function ResourcesLayout({
   children,
@@ -18,5 +19,12 @@ export default function ResourcesLayout({
     }
   }, [publicKey, router])
 
-  return children
+  const textToRead = "Welcome to the OARG website. Here you can register your intellectual property.";
+
+  return (
+    <div>
+      {children}
+      <ReadAloudButton text={textToRead} />
+    </div>
+  );
 } 

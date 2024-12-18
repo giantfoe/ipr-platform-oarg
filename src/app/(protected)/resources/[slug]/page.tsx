@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/app/_components/ui/button'
 import ClientOnly from '@/app/_components/ClientOnly'
+import { speak } from '@/utils/speech'
 
 interface WrittenResource {
   id: string
@@ -135,6 +136,13 @@ export default function ResourceDetailPage({ params }: PageProps) {
                 </div>
               )}
             </div>
+            <button
+              onClick={() => speak(`${resource.title}. ${resource.description}`)}
+              aria-label={`Read out ${resource.title}`}
+              className="mt-4 px-4 py-2 bg-primary text-white rounded-md"
+            >
+              Read Aloud
+            </button>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 import Link from 'next/link'
+import { speak } from '@/utils/speech'
 
 interface WrittenResource {
   id: string
@@ -79,36 +80,41 @@ export function ResourcesList({ resources = [] }: ResourcesListProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredResources.map((resource) => (
-            <Link 
-              key={resource.id}
-              href={`/resources/${resource.slug}`}
-              className="block bg-white rounded-lg border hover:shadow-md transition-shadow duration-200"
-            >
-              <div className="p-6">
-                <div className="flex flex-col h-full">
-                  <div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize">
-                      {resource.type}
-                    </span>
-                    <h3 className="mt-2 text-lg font-medium text-gray-900">
-                      {resource.title}
-                    </h3>
-                    <p className="mt-2 text-sm text-gray-500 line-clamp-3">
-                      {resource.description}
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-gray-500">
-                    <span>{resource.author}</span>
-                    <span>{new Date(resource.created_at).toLocaleDateString()}</span>
-                  </div>
-                  {resource.reading_time && (
-                    <div className="mt-2 text-sm text-gray-500">
-                      {resource.reading_time} min read
+            <div key={resource.id} className="block bg-white rounded-lg border hover:shadow-md transition-shadow duration-200">
+              <Link href={`/resources/${resource.slug}`}>
+                <div className="p-6">
+                  <div className="flex flex-col h-full">
+                    <div>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary capitalize">
+                        {resource.type}
+                      </span>
+                      <h3 className="mt-2 text-lg font-medium text-gray-900">
+                        {resource.title}
+                      </h3>
+                      <p className="mt-2 text-sm text-gray-500 line-clamp-3">
+                        {resource.description}
+                      </p>
                     </div>
-                  )}
+                    <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-gray-500">
+                      <span>{resource.author}</span>
+                      <span>{new Date(resource.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {resource.reading_time && (
+                      <div className="mt-2 text-sm text-gray-500">
+                        {resource.reading_time} min read
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              <button
+                onClick={() => speak(`${resource.title}. ${resource.description}`)}
+                aria-label={`Read out ${resource.title}`}
+                className="mt-2 px-4 py-2 bg-primary text-white rounded-md"
+              >
+                Read Aloud
+              </button>
+            </div>
           ))}
         </div>
       )}

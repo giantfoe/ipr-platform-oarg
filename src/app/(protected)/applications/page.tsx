@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useWallet } from "@solana/wallet-adapter-react"
 import { useRouter } from 'next/navigation'
 import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'

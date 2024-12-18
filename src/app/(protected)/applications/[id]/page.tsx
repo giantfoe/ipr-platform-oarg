@@ -8,6 +8,7 @@ import { LoadingSpinner } from '@/app/_components/ui/LoadingSpinner'
 import { StatusBadge } from '@/app/_components/ui/StatusBadge'
 import { DownloadCertificate } from '@/app/_components/DownloadCertificate'
 import { useToast } from "@/components/ui/use-toast"
+import FauxPayment from '@/components/FauxPayment'
 
 interface ApplicationDetails {
   id: string
@@ -149,20 +150,10 @@ export default function ApplicationDetailPage({ params }: { params: { id: string
                 </div>
               </dl>
 
-              {/* Show Download Certificate button for approved applications */}
+              {/* Show Faux Payment for approved applications */}
               {application.status === 'approved' && (
                 <div className="mt-6">
-                  <DownloadCertificate 
-                    applicationData={{
-                      id: application.id,
-                      title: application.title,
-                      applicant_name: application.applicant_name,
-                      company_name: application.company_name,
-                      application_type: application.application_type,
-                      created_at: application.created_at,
-                      approved_at: application.updated_at
-                    }} 
-                  />
+                  <FauxPayment amount={application.amount} />
                 </div>
               )}
             </div>
