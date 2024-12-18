@@ -35,25 +35,47 @@ const faqData: FAQ[] = [
 ];
 
 export function FAQ() {
-  // Use the initialized data
   const [faqs] = useState<FAQ[]>(faqData);
 
   return (
-    <section className="bg-gray-50 py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-semibold text-center text-[#0A2540]">
-          Frequently Asked Questions
-        </h2>
+    <div className="relative py-16 sm:py-24 overflow-hidden">
+      {/* Background with Sierra Leone colors */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: `
+            linear-gradient(
+              135deg,
+              rgba(27, 75, 115, 0.08) 0%,
+              rgba(255, 255, 255, 0.95) 35%,
+              rgba(17, 138, 78, 0.08) 70%,
+              rgba(27, 75, 115, 0.08) 100%
+            )
+          `
+        }}
+      />
+
+      <div className="relative max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-[#1B4B73] sm:text-4xl">
+            Frequently Asked Questions
+          </h2>
+          <p className="mt-3 max-w-2xl mx-auto text-[15px] text-gray-600">
+            Find answers to common questions about our services
+          </p>
+        </div>
+
         <div className="mt-12 space-y-6">
-          {faqs?.map((faq) => (
+          {faqs.map((faq) => (
             <FAQItem
               key={faq.id}
               question={faq.question}
               answer={faq.answer}
+              className="bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl"
             />
           ))}
         </div>
       </div>
-    </section>
-  );
+    </div>
+  )
 } 
